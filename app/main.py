@@ -16,6 +16,7 @@ except ImportError:
 import httpx
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -27,7 +28,16 @@ from .export_manager import send_export_mail
 from .report_generator import devis_csv, analyses_csv, ratings_csv, full_csv, html_report
 from .scoring import score_devis
 
+# Middleware pour forcer UTF-8 sur toutes les réponses
+class UTF8Middleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        if "content-type" in response.headers:
+            response.headers["content-type"] = response.headers["content-type"].split(";")[0] + "; charset=utf-8"
+        return response
+
 app = FastAPI(title="AssurDevis")
+app.add_middleware(UTF8Middleware)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 BASE = Path(__file__).parent.parent
@@ -216,7 +226,14 @@ async def query_groq(messages: list[dict]) -> str:
                 rotate_groq_key()
                 continue
             resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"]
+            text = resp.json()["choices"][0]["message"]["content"]
+            # Réparer l'encoding UTF-8 si nécessaire
+            try:
+                # Si le texte a des caractères mal encodés (Ã© au lieu de é)
+                text = text.encode('latin-1').decode('utf-8', errors='ignore')
+            except (UnicodeDecodeError, UnicodeEncodeError):
+                pass  # Si ça fail, garder le texte original
+            return text
 
     raise RuntimeError("Toutes les clés Groq sont épuisées")
 
