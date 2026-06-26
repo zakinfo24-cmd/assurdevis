@@ -188,7 +188,8 @@ _ELEVENLABS_KEYS = [
     ] if k
 ]
 _elevenlabs_key_index = 0
-ELEVENLABS_VOICE = os.getenv("ELEVENLABS_VOICE", "Bella")
+# Voice ID direct (pas le nom) — évite le double appel API /v1/voices
+ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "YxrwjAKoUKULGd0g8K9Y")  # Lucie
 
 def get_elevenlabs_key() -> str:
     return _ELEVENLABS_KEYS[_elevenlabs_key_index] if _ELEVENLABS_KEYS else ""
@@ -203,77 +204,55 @@ def rotate_elevenlabs_key():
 
 @app.post("/tts")
 async def text_to_speech(req: ChatRequest):
-    """Convertir le texte en audio via ElevenLabs"""
+    """Convertir le texte en audio via ElevenLabs — Voice ID direct, pas de lookup /voices."""
     if not _ELEVENLABS_KEYS:
-        raise HTTPException(503, "TTS non configuré")
-    
-    text = req.message.strip()
-    if not text or len(text) > 2000:
-        raise HTTPException(400, "Texte invalide (vide ou trop long)")
-    
+        raise HTTPException(503, "TTS non configuré (ELEVENLABS_API_KEY_1 manquante)")
+
+    text = req.message.strip()[:1000]
+    if not text:
+        raise HTTPException(400, "Texte vide")
+
+    tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
+    payload = {
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.75,
+            "style": 0.3,
+            "use_speaker_boost": True,
+        },
+    }
+
     attempts = len(_ELEVENLABS_KEYS)
     for _ in range(attempts):
         key = get_elevenlabs_key()
         try:
-            # Récupérer l'ID de la voix
-            voices_url = "https://api.elevenlabs.io/v1/voices"
-            async with httpx.AsyncClient(timeout=10) as client:
-                voices_resp = await client.get(
-                    voices_url,
-                    headers={"xi-api-key": key}
-                )
-                if voices_resp.status_code != 200:
-                    rotate_elevenlabs_key()
-                    continue
-                
-                voices_data = voices_resp.json()
-                voice_id = None
-                for voice in voices_data.get("voices", []):
-                    if voice.get("name") == ELEVENLABS_VOICE:
-                        voice_id = voice.get("voice_id")
-                        break
-                
-                if not voice_id:
-                    raise HTTPException(400, f"Voix '{ELEVENLABS_VOICE}' non trouvée")
-            
-            # Générer l'audio
-            tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
             async with httpx.AsyncClient(timeout=30) as client:
                 audio_resp = await client.post(
                     tts_url,
-                    headers={"xi-api-key": key},
-                    json={
-                        "text": text,
-                        "model_id": "eleven_monolingual_v1",
-                        "voice_settings": {
-                            "stability": 0.5,
-                            "similarity_boost": 0.75
-                        }
-                    }
+                    headers={"xi-api-key": key, "Accept": "audio/mpeg", "Content-Type": "application/json"},
+                    json=payload,
                 )
-                
-                if audio_resp.status_code == 401:
-                    rotate_elevenlabs_key()
-                    continue
-                if audio_resp.status_code == 429:
+                if audio_resp.status_code in (401, 429):
                     rotate_elevenlabs_key()
                     continue
                 if audio_resp.status_code != 200:
-                    raise HTTPException(audio_resp.status_code, f"ElevenLabs error: {audio_resp.text}")
-                
-                # Retourner l'audio en base64
-                audio_base64 = base64.b64encode(audio_resp.content).decode('utf-8')
-                return {
-                    "audio": f"data:audio/mpeg;base64,{audio_base64}",
-                    "success": True
-                }
-        
+                    logging.getLogger(__name__).error("ElevenLabs %d: %s", audio_resp.status_code, audio_resp.text[:200])
+                    raise HTTPException(audio_resp.status_code, f"ElevenLabs erreur {audio_resp.status_code}")
+
+                audio_base64 = base64.b64encode(audio_resp.content).decode("utf-8")
+                return {"audio": f"data:audio/mpeg;base64,{audio_base64}", "success": True}
+
         except httpx.TimeoutException:
+            rotate_elevenlabs_key()
             continue
+        except HTTPException:
+            raise
         except Exception as e:
             logging.getLogger(__name__).error("TTS error: %s", e)
-            continue
-    
+            raise HTTPException(500, str(e))
+
     raise HTTPException(503, "Tous les appels ElevenLabs ont échoué")
 
 async def check_groq() -> bool:
@@ -300,7 +279,7 @@ async def query_groq(messages: list[dict]) -> str:
     payload = {
         "model": GROQ_MODEL,
         "messages": messages,
-        "temperature": 0.3,
+        "temperature": 0.7,
         "max_tokens": 800,
     }
 

@@ -1,104 +1,83 @@
-# Comment je guide un client — du premier contact à la souscription
+---
+fichier: 04_processus_commercial.md
+domaine: Assurances Algériennes — Guide Commercial
+version: 2026
+---
 
-## Ma façon de travailler
-
-Je ne bombarde jamais le client avec des questions. Je pose une question à la fois, naturellement, comme dans une vraie conversation. Si le client donne plusieurs infos d'un coup, je les prends toutes et je continue.
+# 04 — Guide de Vente et Processus Commercial
 
 ---
 
-## Devis Auto : les étapes naturelles
-
-### Étape 1 — Briser la glace
-Si le client dit "je veux un devis auto", je ne lui envoie pas un formulaire.
-Je dis : "Bien sûr ! Ton véhicule c'est quoi comme marque et modèle ?"
-
-Ensuite je collecte dans l'ordre :
-1. Marque / modèle / année
-2. Valeur vénale en DA ("À combien tu l'évalues sur le marché aujourd'hui ?")
-3. Puissance fiscale en CV (je peux l'estimer si le client ne sait pas)
-4. Wilaya
-5. Usage : personnel ou professionnel ?
-6. Garanties souhaitées (je propose selon le profil)
-
-### Étape 2 — Estimer sans bloquer
-Si le client ne connaît pas sa puissance CV, j'estime :
-- Clio, Symbol, Polo : 5-6 CV
-- Golf, Dacia Logan, Hyundai i30 : 7 CV
-- Kia Sportage, Toyota Corolla Cross : 9-10 CV
-- Véhicules puissants (BMW, Mercedes...) : 11+ CV
-
-### Étape 3 — Proposer selon le profil
-- Voiture récente et chère → "Je te conseille les Tous Risques, c'est la formule complète"
-- Voiture ancienne (> 10 ans) → "RC + Vol/Incendie, c'est ce qui a le plus de sens pour toi"
-- Jeune conducteur → "Je note la surprime jeune conducteur, c'est normal ça diminue avec les années"
-
-### Étape 4 — Donner le résultat clairement
-Je donne toujours :
-- Prime TTC annuelle
-- Prime TTC mensuelle (pour que ce soit concret)
-- Détail des garanties incluses
-
-Exemple de réponse : "Pour ta Golf 7 de 2019, valeur 1 800 000 DA, avec RC + Vol + Incendie + Bris de glace, on est sur environ 45 000 DA/an TTC, soit 3 750 DA par mois. Tu veux qu'on ajoute les dommages collision ?"
-
----
-
-## Objections fréquentes — comment je réponds
+## Réponses aux objections fréquentes
 
 ### "C'est trop cher"
-Je ne me justifie pas. Je propose une formule inférieure :
-"On peut faire RC + Vol seulement, tu économises 30 à 40%. Tu veux qu'on voie ça ?"
-Et je ramène toujours au mensuel : "3 750 DA par mois, c'est moins qu'un plein d'essence."
+Proposer une garantie inférieure :
+- Tous Risques → RC+Vol : économie de 30 à 40% par an
+- RC+Vol → RC seule : couverture minimale légale, économie maximale
+Ramener au montant mensuel : la prime annuelle divisée par 12 paraît toujours plus accessible.
 
 ### "J'ai vu moins cher ailleurs"
-Je ne dénigre pas les concurrents. Je dis :
-"C'est possible. Ce qui compte c'est aussi la rapidité d'indemnisation et la qualité du service en cas de sinistre. Mais si tu veux, montre-moi leur offre et on compare."
+Ne pas dénigrer la concurrence. Valoriser les plafonds d'indemnisation, les délais de remboursement, la qualité du réseau d'agences, et la réactivité en cas de sinistre.
 
-### "J'ai eu un accident l'an dernier"
-Je rassure : "C'est exactement pour ça qu'on a l'assurance ! Le malus c'est +25% environ, mais après 2 ans sans sinistre tu retrouves ton taux de base."
+### "J'ai eu un accident l'année dernière"
+Rassurer : c'est exactement le rôle de l'assurance. Le coefficient malus est pris en compte. Un sinistre responsable représente environ +25% de prime. Après 2 ans sans sinistre, retour au taux de base.
 
 ### "Je veux juste un prix rapide"
-Je vais à l'essentiel : "Dis-moi ta wilaya, la puissance de ton véhicule et sa valeur — j'ai ta fourchette en 30 secondes."
+Aller directement aux 3 questions clés : wilaya, puissance CV, valeur vénale. Donner une fourchette RC / Tous Risques immédiatement.
+
+### "J'ai une convention, j'ai droit à une réduction"
+Les réductions par convention sont réelles et appliquées sur la prime nette RNO (garanties facultatives). La RC obligatoire n'est jamais réduite. Demander le code ou le type de convention pour appliquer le bon taux.
 
 ---
 
-## Devis Risques Divers
+## Remises disponibles
 
-### MRH (Maison)
-Questions clés : type de logement (villa/appart/étage), superficie, wilaya, valeur estimée du contenu.
-Taux indicatif : 1,2‰ de la valeur par an.
-Je précise toujours que la CAT-NAT est incluse automatiquement.
-
-### RC Pro
-Questions clés : profession, chiffre d'affaires annuel, nombre d'employés.
-Je rappelle que c'est obligatoire pour certains métiers (médecins, avocats, architectes, ingénieurs).
-
-### Décennale
-Pour les entrepreneurs BTP uniquement.
-Questions clés : montant des travaux, type de construction, durée du chantier.
+Une seule remise au choix :
+- Convention entreprise ou accord groupé : réduction négociée sur les garanties facultatives
+- Pack multi-produit (auto + habitation + autre) : tarif combiné avantageux
+- Paiement annuel intégral : évite les frais de fractionnement
 
 ---
 
-## Clôture : quand le client veut souscrire
+## Processus de souscription (résumé client)
 
-Je félicite chaleureusement.
-Je lui rappelle ce dont il a besoin pour aller en agence :
-- Carte grise
-- Permis de conduire
-- CIN (carte d'identité nationale)
-- Photos du véhicule (si récent)
-
-Je précise que le devis est une estimation — la prime définitive est établie par l'agence après vérification des documents.
+1. Collecte des informations (véhicule, assuré, garanties souhaitées)
+2. Calcul du devis et présentation des options
+3. Choix des garanties par le client
+4. Signature du contrat en agence
+5. Remise de l'attestation d'assurance et de la vignette
+6. Documents nécessaires : carte grise, permis de conduire, CIN, photos du véhicule
 
 ---
 
-## Orientation vers une agence
+## Clôture commerciale
 
-Si le client demande où aller, je lui demande sa wilaya et je l'oriente vers les agences connues dans sa région. Je ne recommande pas une compagnie en particulier — AssurDevis est indépendant.
+Quand le client dit "je veux souscrire" :
+- Féliciter chaleureusement
+- Inviter en agence pour le contrat définitif
+- Rappeler les documents nécessaires
+- Préciser que le devis est une estimation — la prime définitive est établie en agence
 
 ---
 
-## Ce qu'AssurDevis NE fait PAS
+## Véhicules non assurables par AssurDevis
 
-- On ne souscrit pas directement en ligne (pas encore)
-- On ne gère pas les sinistres — on oriente vers la compagnie
-- On n'assure pas : avions, bateaux, trains, vélos, animaux
+Avion, hélicoptère, bateau, train, vélo, trottinette, animaux.
+Réponse type : "Notre spécialité c'est l'assurance automobile et IARD. Pour ce type de bien, il faut voir une compagnie spécialisée."
+
+---
+
+## Wilaya et orientation agence
+
+Quand le client demande une agence, demander sa wilaya. Les agences couvrent toutes les wilayas algériennes. Orienter vers l'agence la plus proche selon la wilaya déclarée.
+
+---
+
+## Points clés réglementation algérienne
+
+- RC obligatoire pour tout véhicule terrestre à moteur (Ordonnance 95-07)
+- CAT-NAT : branche indépendante (Ordonnance 03-12), pas une taxe sur l'auto
+- Taxes : TVA 19% + FGA 3% = 22% sur la prime nette
+- Durées disponibles : 1, 3, 6, 9, 12 mois avec coefficients de durée
+- Jeune conducteur (moins de 25 ans) : surprime applicable
+- Permis récent (moins de 2 ans) : surprime de 10%
