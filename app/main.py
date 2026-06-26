@@ -282,6 +282,10 @@ def search_knowledge(query: str, top_k: int = 3, intent: str = "QUESTION_INFO") 
 
 @app.get("/")
 async def root():
+    """Servir le fichier index.html à la racine"""
+    index_file = STATIC / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file), media_type="text/html; charset=utf-8")
     return {"service": "AssurDevis", "version": "3.0", "status": "online"}
 
 
