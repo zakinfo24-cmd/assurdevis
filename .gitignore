@@ -1,0 +1,9 @@
+python_portable/
+ollama_models/
+__pycache__/
+*.pyc
+*.zip
+*.exe
+saved/
+.env
+.env.zip

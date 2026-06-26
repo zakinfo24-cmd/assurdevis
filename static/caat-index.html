@@ -1,0 +1,1252 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231A5FC4'/><text x='16' y='22' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>A</text></svg>">
+<title>AssurDevis — Devis Assurance Auto & Multi-Risques</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ad-900: #0D3880;
+  --ad-800: #144B9E;
+  --ad-700: #1A5FC4;
+  --ad-600: #2A7DE1;
+  --ad-400: #6BA8F0;
+  --ad-100: #D4E4FB;
+  --ad-50:  #EDF3FD;
+  --green-700: #1A7742;
+  --green-600: #219653;
+  --green-400: #6FCF97;
+  --green-100: #D4F5E2;
+  --green-50:  #EAF9F0;
+  --white:     #FFFFFF;
+  --bg:        #F4F6F9;
+  --bg-card:   #FFFFFF;
+  --text:      #1A1D24;
+  --text-mid:  #4A5060;
+  --text-soft: #8A91A4;
+  --border:    #E2E5EC;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 32px;
+  --shadow-sm: 0 2px 8px rgba(13,56,128,0.06);
+  --shadow-md: 0 8px 32px rgba(13,56,128,0.10);
+  --shadow-btn: 0 4px 0 #144B9E, 0 6px 10px rgba(0,0,0,0.18);
+  --cream:      var(--bg);
+  --cream-dark: var(--border);
+  --sand:       var(--border);
+  --gold:       #D4922E;
+  --gold-dark:  #B07620;
+  --gold-light: #FDF0DB;
+  --ff-display: 'Syne', sans-serif;
+  --ff-body:   'DM Sans', system-ui, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  background: var(--cream);
+  font-family: var(--ff-body);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#app {
+  width: min(720px, 94vw);
+  max-width: 720px;
+  height: 85vh;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-lg);
+}
+.chat-header {
+  background: linear-gradient(135deg, var(--ad-800), var(--ad-700) 60%, var(--ad-600));
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.header-avatar {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--ad-700);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--ff-display);
+  font-size: 22px; font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.header-info { flex: 1; }
+.header-name {
+  font-family: var(--ff-display);
+  font-size: 16.1px; font-weight: 700;
+  color: var(--white);
+}
+.header-status {
+  font-size: 13.2px;
+  display: flex; align-items: center; gap: 5px;
+  margin-top: 1px;
+  color: rgba(255,255,255,0.7);
+}
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green-200); }
+.info-tiles {
+  padding: 8px 24px;
+  display: flex; flex-wrap: wrap;
+  gap: 6px;
+  background: var(--ad-50);
+  border-bottom: 1px solid rgba(56,70,147,0.08);
+  min-height: 0;
+}
+.info-tiles:empty { padding: 0 24px; }
+.tile {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--white);
+  border: 1px solid var(--ad-100);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 13.2px;
+  white-space: nowrap;
+  animation: tileIn .3s ease;
+}
+@keyframes tileIn { from{opacity:0;transform:scale(.9)} to{opacity:1;transform:scale(1)} }
+.tile-icon { font-size: 14.9px; }
+.tile-content { display: flex; flex-direction: column; }
+.tile-value { font-weight: 600; color: var(--ad-700); line-height: 1.2; }
+.tile-label { font-size: 10.3px; color: var(--text-soft); text-transform: uppercase; letter-spacing: .4px; }
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: 20px 24px;
+  display: flex; flex-direction: column;
+  gap: 8px;
+  scroll-behavior: smooth;
+  background: var(--cream);
+}
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-track { background: transparent; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--sand); border-radius: 4px; }
+.msg-row { display: flex; gap: 10px; align-items: flex-end; max-width: 82%; }
+.msg-row.bot { align-self: flex-start; }
+.msg-row.user { align-self: flex-end; flex-direction: row-reverse; }
+.msg-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--ff-display); font-size: 12.6px; font-weight: 700;
+}
+.msg-row.bot .msg-avatar { background: var(--ad-100); color: var(--ad-700); }
+.msg-row.user .msg-avatar { background: var(--ad-600); color: var(--gold); }
+.bubble {
+  padding: 9px 15px; border-radius: var(--radius-md);
+  font-size: 15.5px; line-height: 1.55;
+  max-width: 100%;
+  word-wrap: break-word;
+}
+.msg-row.bot .bubble {
+  background: var(--white);
+  border: 1px solid var(--sand);
+  border-bottom-left-radius: 4px;
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+.msg-row.user .bubble {
+  background: linear-gradient(135deg, var(--ad-600), var(--ad-700));
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.typing-row { display: flex; gap: 10px; align-items: flex-end; align-self: flex-start; }
+.typing-bubble {
+  background: var(--white); border: 1px solid var(--sand);
+  border-radius: var(--radius-md); border-bottom-left-radius: 4px;
+  padding: 12px 16px;
+  display: flex; gap: 4px; align-items: center;
+  box-shadow: var(--shadow-sm);
+}
+.typing-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-soft);
+  animation: pulse 1.3s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: .15s; }
+.typing-dot:nth-child(3) { animation-delay: .3s; }
+@keyframes pulse { 0%,80%,100%{opacity:.2;transform:scale(.9)} 40%{opacity:1;transform:scale(1)} }
+.choices-row {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  padding-left: 46px; max-width: 82%;
+}
+.choice-btn {
+  background: var(--white); border: 1px solid var(--sand);
+  color: var(--text-mid); padding: 8px 16px;
+  border-radius: 100px; cursor: pointer;
+  font-size: 14.4px; font-weight: 500;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.choice-btn:hover { background: var(--ad-600); color: #fff; border-color: var(--ad-600); }
+.choice-btn:disabled { opacity: .4; pointer-events: none; }
+.devis-card {
+  background: var(--white);
+  border: 1px solid var(--sand);
+  border-top: 3px solid var(--gold);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  align-self: flex-start;
+  max-width: 88%;
+  margin-left: 40px;
+  box-shadow: var(--shadow-sm);
+  animation: fadeIn .4s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+.devis-header {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 10px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--sand);
+}
+.devis-icon {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  background: var(--gold-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18.4px;
+}
+.devis-title-text {
+  font-family: var(--ff-display);
+  font-size: 14.9px; font-weight: 700;
+  color: var(--ad-800);
+}
+.devis-lines { display: flex; flex-direction: column; gap: 0; }
+.devis-line {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--sand);
+  font-size: 14.4px;
+}
+.devis-line:last-of-type { border-bottom: none; }
+.line-label { color: var(--text-soft); }
+.line-val { font-weight: 500; color: var(--text); }
+.devis-total-block {
+  margin-top: 8px;
+  background: linear-gradient(135deg, var(--ad-700), var(--ad-800));
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.total-label {
+  font-family: var(--ff-display);
+  font-size: 12.6px; font-weight: 700;
+  color: rgba(255,255,255,.7);
+  letter-spacing: .5px; text-transform: uppercase;
+}
+.total-amount {
+  font-family: var(--ff-display);
+  font-size: 23px; font-weight: 800;
+  color: var(--gold);
+}
+.devis-promo {
+  margin-top: 6px; padding: 6px 10px;
+  background: var(--gold-light);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  font-size: 13.8px; color: #7a5e00; font-weight: 500;
+  display: flex; align-items: flex-start; gap: 6px;
+}
+.devis-rating { margin-top: 8px; padding: 8px 10px; background: var(--cream); border-radius: var(--radius-sm); display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.devis-rating .stars { display: flex; gap: 2px; }
+.devis-rating .star { font-size: 20px; cursor: pointer; color: var(--sand); transition: color .15s, transform .15s; }
+.devis-rating .star:hover { transform: scale(1.2); }
+.devis-rating .star.filled { color: var(--gold); }
+.devis-rating .star.half { position: relative; display: inline-block; color: var(--sand); }
+.devis-rating .star.half::before { content: '\2605'; position: absolute; left: 0; width: 50%; overflow: hidden; color: var(--gold); }
+.devis-rating .star.readonly { cursor: default; }
+.devis-rating .star.readonly:hover { transform: none; }
+.devis-rating .avg-label { font-weight: 600; color: var(--text-mid); margin-left: 4px; }
+.devis-rating .rated-msg { font-size: 12px; color: var(--green-600); font-weight: 500; }
+.input-bar {
+  padding: 14px 24px;
+  background: var(--white);
+  border-top: 1px solid var(--sand);
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+}
+.chat-input {
+  flex: 1;
+  background: var(--cream);
+  border: 1px solid var(--sand);
+  border-radius: var(--radius-lg);
+  padding: 10px 18px;
+  font-size: 15.5px;
+  font-family: var(--ff-body);
+  color: var(--text);
+  outline: none;
+  transition: border-color .2s;
+}
+.chat-input:focus { border-color: var(--green-400); }
+.chat-input::placeholder { color: var(--text-soft); }
+.chat-input:disabled { opacity: .5; cursor: not-allowed; }
+.nouveau-bar {
+  background: var(--ad-700);
+  padding: 6px 16px 8px;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.nouveau-btn {
+  background: #FFE484;
+  color: #3D2B00;
+  font-family: var(--ff-body);
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  border-radius: 100px;
+  padding: 7px 22px;
+  cursor: pointer;
+  transition: all .15s;
+  letter-spacing: .3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+.nouveau-btn:hover { background: #FFD633; }
+.send-btn {
+  width: 120px; height: 120px;
+  background: transparent;
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .15s;
+  padding: 0;
+  overflow: visible;
+  flex-shrink: 0;
+}
+.send-btn:hover { transform: scale(1.08); }
+.send-btn:active { transform: scale(0.95); }
+.send-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.mic-btn {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  background: var(--white);
+  border: 2px solid var(--sand);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .2s; font-size: 20.7px;
+}
+.mic-btn:hover { border-color: var(--ad-400); background: var(--ad-50); }
+.mic-btn.listening {
+  background: #D21034; border-color: #D21034;
+  animation: micPulse 1s ease-in-out infinite;
+}
+@keyframes micPulse { 0%,100%{box-shadow:0 0 0 0 rgba(94,192,218,.4)} 50%{box-shadow:0 0 0 10px rgba(94,192,218,0)} }
+.mic-btn:disabled { opacity: .4; cursor: not-allowed; }
+.scan-btn {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  background: var(--white);
+  border: 2px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .2s; font-size: 18px;
+}
+.scan-btn:hover { border-color: var(--ad-400); background: var(--gold-light); }
+.scan-modal {
+  position: absolute; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+}
+.scan-modal-content {
+  background: var(--white); border-radius: var(--radius-lg);
+  padding: 24px; width: min(320px, 90%);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.scan-modal-title { font-weight: 700; font-size: 18px; text-align: center; margin-bottom: 8px; }
+.scan-option {
+  padding: 14px 16px; border-radius: var(--radius-md);
+  border: 1px solid var(--sand); background: var(--cream);
+  font-size: 15px; cursor: pointer; transition: all .15s; text-align: center; font-family: var(--ff-body);
+}
+.scan-option:hover { border-color: var(--green-400); background: var(--green-50); }
+.scan-cancel { border-color: transparent; color: var(--text-soft); }
+.scan-cancel:hover { border-color: var(--ad-400); background: var(--ad-50); color: var(--ad-700); }
+.analyse-card {
+  background: var(--white); border: 1px solid var(--gold); border-radius: var(--radius-md);
+  padding: 14px; margin: 8px 0;
+}
+.analyse-card h4 { font-size: 15px; margin-bottom: 6px; color: var(--ad-700); }
+.analyse-score { font-size: 24px; font-weight: 700; text-align: center; }
+.analyse-score.valid { color: var(--green-600); }
+.analyse-score.invalid { color: var(--ad-600); }
+.analyse-section { margin: 8px 0; }
+.analyse-section-title { font-weight: 600; font-size: 13px; color: var(--text-mid); margin-bottom: 4px; }
+.analyse-tag { display: inline-block; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 600; margin: 2px; }
+.analyse-tag.garantie { background: var(--green-100); color: var(--green-700); }
+.analyse-tag.exclusion { background: var(--ad-100); color: var(--ad-700); }
+.analyse-clause { padding: 4px 0; font-size: 12px; border-bottom: 1px solid var(--cream-dark); }
+
+.speak-btn {
+  border: none; background: none; cursor: pointer; font-size: 16.1px;
+  opacity: .5; transition: opacity .15s; padding: 2px 4px; margin-left: 4px;
+  vertical-align: middle; line-height: 1;
+}
+.speak-btn:hover { opacity: 1; }
+/* Bouton envoi */
+.fab-face { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.fab-eyes { display: flex; gap: 5px; align-items: center; }
+.fab-eye {
+  width: 22px; height: 22px;
+  background: var(--ad-700); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+  animation: eyeBlink 3.5s ease-in-out infinite;
+}
+.fab-eye::before {
+  content: '';
+  width: 8px; height: 8px;
+  background: #fff; border-radius: 50%;
+  position: absolute; top: 4px; left: 4px;
+}
+.fab-eye::after {
+  content: '';
+  width: 6px; height: 6px;
+  background: #ffffff; border-radius: 50%;
+  position: absolute; top: 3px; right: 3px;
+  opacity: 0.55;
+}
+.fab-eye:nth-child(2) { animation-delay: 0.15s; }
+@keyframes eyeBlink {
+  0%,90%,100% { transform: scaleY(1); }
+  94%          { transform: scaleY(0.08); }
+}
+.fab-smile {
+  width: 24px; height: 12px;
+  border: 2.5px solid var(--ad-700);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  margin-top: 1px;
+}
+.suggestions {
+  display: flex;
+  gap: 6px;
+  padding: 0 24px 10px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  background: var(--white);
+}
+.suggestions button {
+  white-space: nowrap;
+  padding: 6px 14px;
+  border: 1px solid var(--ad-400);
+  border-radius: 100px;
+  background: var(--white);
+  color: var(--ad-700);
+  font-size: 13.8px;
+  font-family: var(--ff-body);
+  cursor: pointer;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.suggestions button:hover { background: var(--ad-600); color: #fff; border-color: var(--ad-600); }
+.suggestions button:disabled { opacity: .4; cursor: not-allowed; }
+@media (max-width: 720px) {
+  #app { width: 90%; height: 85vh; max-height: 85vh; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); margin: auto; }
+  .nouveau-bar { padding: 5px 12px 7px; }
+  .nouveau-btn { font-size: 11.5px; padding: 5px 14px; }
+  .chat-header { padding: 12px 16px; }
+  .header-avatar { width: 44px; height: 44px; font-size: 18px; }
+  .chat-messages { padding: 16px; gap: 10px; }
+  .info-tiles { padding: 8px 16px; gap: 6px; overflow-x: auto; flex-wrap: nowrap; }
+  .tile { font-size: 12.1px; padding: 4px 8px; white-space: nowrap; flex-shrink: 0; }
+  .msg-row { max-width: 92%; }
+  .msg-row.bot { max-width: 95%; }
+  .bubble { font-size: 14.9px; padding: 10px 13px; }
+  .input-bar { padding: 10px 16px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .chat-input { font-size: 16.1px; padding: 12px 16px; min-height: 44px; }
+  .send-btn { width: 72px; height: 72px; }
+  .suggestions { padding: 0 16px 8px; }
+  .suggestions button { font-size: 12px; padding: 5px 12px; }
+  .devis-card { max-width: 100%; margin-left: 0; padding: 14px; }
+  .devis-total-block { padding: 10px 12px; }
+  .total-amount { font-size: 20.7px; }
+  .msg-avatar { width: 26px; height: 26px; font-size: 11px; }
+}
+@media (max-width: 400px) {
+  .chat-messages { padding: 12px 10px; }
+  .bubble { font-size: 14.4px; padding: 9px 11px; }
+  .msg-row { max-width: 98%; }
+}
+@media (min-width: 721px) and (max-height: 700px) {
+  #app { height: 95vh; max-height: 95vh; }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="chat-header">
+    <div class="header-avatar">A</div>
+    <div class="header-info">
+      <div class="header-name">Assistant IA</div>
+      <div class="header-status">
+        <span class="status-dot"></span>
+        En ligne · Répond instantanément
+      </div>
+    </div>
+  </div>
+  <div class="nouveau-bar">
+    <button class="nouveau-btn" onclick="resetConv()">↺ Nouveau Devis</button>
+  </div>
+
+  <div id="tilesBar" class="info-tiles"></div>
+
+  <div class="chat-messages" id="chat"></div>
+
+  <div id="suggestions" class="suggestions">
+    <button onclick="sendQuick('Bonjour')">👋 Bonjour</button>
+    <button onclick="sendQuick('Je veux un devis auto')">🚗 Devis Auto</button>
+    <button onclick="sendQuick('Je veux un pack combiné')">📦 Pack</button>
+    <button onclick="sendQuick(&quot;Qu&#39;est-ce que vous proposez comme garanties ?&quot;)">🔒 Garanties</button>
+    <button onclick="triggerScan()">📄 Scanner un contrat</button>
+  </div>
+
+  <div class="input-bar">
+    <input class="chat-input" id="input" placeholder="Écrivez votre réponse..." enterkeyhint="send" autocomplete="off" />
+    <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="handleFileSelect(event)" />
+    <button class="scan-btn" id="scanBtn" onclick="triggerScanOptions()" title="Scanner un contrat">📄</button>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Envoyer">
+      <div class="fab-face">
+        <div class="fab-eyes">
+          <div class="fab-eye"></div>
+          <div class="fab-eye"></div>
+        </div>
+        <div class="fab-smile"></div>
+      </div>
+    </button>
+    <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Dicter">🎤</button>
+  </div>
+  
+  <!-- Modal pour les options de scan -->
+  <div id="scanModal" class="scan-modal" style="display:none">
+    <div class="scan-modal-content">
+      <div class="scan-modal-title">📄 Analyser un contrat</div>
+      <button class="scan-option" onclick="triggerFileUpload()">📁 Choisir un fichier PDF</button>
+      <button class="scan-option scan-cancel" onclick="closeScanModal()">❌ Annuler</button>
+    </div>
+  </div>
+
+  <!-- Pas d'UI admin — l'IA gère l'export automatiquement toutes les 24h -->
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════
+const API_BASE = '';
+
+// ══════════════════════════════════════════════
+//  ÉTAT
+// ══════════════════════════════════════════════
+let conversationId = '';
+let isProcessing   = false;
+let isCollecting   = false;
+let devisFields    = {};
+
+// ══════════════════════════════════════════════
+//  AFFICHAGE MESSAGES
+// ══════════════════════════════════════════════
+function addMessage(text, role, isHTML = false) {
+  const chat   = document.getElementById('chat');
+  const row    = document.createElement('div');
+  row.className = `msg-row ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = role === 'bot' ? 'S' : 'U';
+  row.appendChild(avatar);
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  if (isHTML) { bubble.innerHTML = text; }
+  else        { bubble.textContent = text; }
+  row.appendChild(bubble);
+
+  if (role === 'bot') {
+    const cleanText = isHTML ? text.replace(/<[^>]*>/g,'').replace(/\*\*/g,'') : text;
+    const speakBtn  = document.createElement('button');
+    speakBtn.className   = 'speak-btn';
+    speakBtn.textContent = '🔊';
+    speakBtn.title       = 'Écouter';
+    speakBtn.onclick     = () => speakText(cleanText, speakBtn);
+    bubble.appendChild(speakBtn);
+  }
+
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+  return bubble;
+}
+
+// Bulle bot avec streaming (texte ajouté progressivement)
+function addStreamingBubble() {
+  const chat   = document.getElementById('chat');
+  const row    = document.createElement('div');
+  row.className = 'msg-row bot';
+  row.id        = 'streaming-row';
+
+  const avatar = document.createElement('div');
+  avatar.className   = 'msg-avatar';
+  avatar.textContent = 'S';
+  row.appendChild(avatar);
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.id        = 'streaming-bubble';
+  row.appendChild(bubble);
+
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+  return bubble;
+}
+
+function finalizeStreamingBubble(fullText) {
+  const bubble = document.getElementById('streaming-bubble');
+  const row    = document.getElementById('streaming-row');
+  if (!bubble || !row) return;
+
+  // Ajouter bouton TTS
+  const speakBtn = document.createElement('button');
+  speakBtn.className   = 'speak-btn';
+  speakBtn.textContent = '🔊';
+  speakBtn.title       = 'Écouter';
+  speakBtn.onclick     = () => speakText(fullText, speakBtn);
+  bubble.appendChild(speakBtn);
+
+  // Retirer les IDs temporaires
+  bubble.removeAttribute('id');
+  row.removeAttribute('id');
+}
+
+function addTyping() {
+  const chat = document.getElementById('chat');
+  const row  = document.createElement('div');
+  row.className = 'typing-row';
+  row.id        = 'typing';
+  const avatar  = document.createElement('div');
+  avatar.className   = 'msg-avatar';
+  avatar.textContent = 'S';
+  row.appendChild(avatar);
+  const bubble = document.createElement('div');
+  bubble.className = 'typing-bubble';
+  bubble.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+  row.appendChild(bubble);
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing');
+  if (el) el.remove();
+}
+
+// ══════════════════════════════════════════════
+//  VOIX — TTS
+// ══════════════════════════════════════════════
+let currentUtterance = null;
+let cachedVoices = [];
+
+// Charger et mettre en cache les voix dès que disponibles
+function loadVoices() {
+  cachedVoices = window.speechSynthesis.getVoices();
+}
+if (window.speechSynthesis) {
+  loadVoices();
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+// Détecter la langue dominante du texte
+function detectLang(text) {
+  // Plage Unicode arabe : \u0600-\u06FF
+  const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
+  const totalChars  = text.replace(/\s/g, '').length;
+  if (totalChars === 0) return 'fr';
+  return (arabicChars / totalChars) > 0.25 ? 'ar' : 'fr';
+}
+
+// Choisir la meilleure voix pour la langue détectée
+function pickVoice(lang) {
+  if (lang === 'ar') {
+    // Chercher voix arabe (ar-SA, ar-DZ, ar-EG…)
+    return cachedVoices.find(v => v.lang.startsWith('ar'))
+        || cachedVoices.find(v => v.lang.startsWith('fr'))
+        || null;
+  }
+  return cachedVoices.find(v => v.lang.startsWith('fr'))
+      || cachedVoices.find(v => v.lang.startsWith('en'))
+      || null;
+}
+
+function cleanForSpeech(text, lang) {
+  let t = text.replace(/[#*_\[\](){}→]/g, '');
+  if (lang === 'fr') {
+    t = t.replace(/\bDA\b/g, 'dinars algériens')
+         .replace(/\bCV\b/g, 'chevaux')
+         .replace(/\bRC\b/g, 'responsabilité civile')
+         .replace(/\bTTC\b/g, 'toutes taxes comprises');
+  }
+  return t.trim();
+}
+
+function speakText(text, btn) {
+  if (!window.speechSynthesis) return;
+  // Toggle OFF si déjà en cours
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+    if (btn) btn.classList.remove('speaking');
+    currentUtterance = null;
+    return;
+  }
+  const lang  = detectLang(text);
+  const clean = cleanForSpeech(text, lang);
+  if (!clean) return;
+
+  const u   = new SpeechSynthesisUtterance(clean);
+  u.lang    = lang === 'ar' ? 'ar-SA' : 'fr-FR';
+  u.rate    = lang === 'ar' ? 0.90 : 0.95;
+  u.pitch   = 1;
+  const voice = pickVoice(lang);
+  if (voice) u.voice = voice;
+
+  u.onend  = () => { if (btn) btn.classList.remove('speaking'); currentUtterance = null; };
+  u.onerror= () => { if (btn) btn.classList.remove('speaking'); currentUtterance = null; };
+  if (btn) btn.classList.add('speaking');
+  currentUtterance = u;
+  window.speechSynthesis.speak(u);
+}
+
+// ══════════════════════════════════════════════
+//  VOIX — STT
+// ══════════════════════════════════════════════
+let micRecognition = null;
+let micListening   = false;
+function toggleMic() {
+  const btn = document.getElementById('micBtn');
+  if (micListening) {
+    if (micRecognition) { try { micRecognition.stop(); } catch(e){} micRecognition = null; }
+    micListening = false;
+    btn.classList.remove('listening');
+    btn.textContent = '🎤';
+    return;
+  }
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    addMessage('La reconnaissance vocale n\'est pas supportée sur ce navigateur. Utilisez Chrome ou Edge.', 'bot');
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  micRecognition = new SR();
+  micRecognition.lang = 'fr-FR';
+  micRecognition.continuous      = false;
+  micRecognition.interimResults  = false;
+  micRecognition.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    document.getElementById('input').value = text;
+    micListening = false;
+    btn.classList.remove('listening');
+    btn.textContent = '🎤';
+    micRecognition  = null;
+    setTimeout(() => sendMessage(), 300);
+  };
+  micRecognition.onerror = () => {
+    micListening = false; btn.classList.remove('listening'); btn.textContent = '🎤'; micRecognition = null;
+  };
+  micRecognition.onend = () => {
+    micListening = false; btn.classList.remove('listening'); btn.textContent = '🎤';
+  };
+  micListening = true;
+  btn.classList.add('listening');
+  btn.textContent = '🔴';
+  try { micRecognition.start(); }
+  catch(e) { micListening = false; btn.classList.remove('listening'); btn.textContent = '🎤'; }
+}
+
+// ══════════════════════════════════════════════
+//  TILES PROFIL
+// ══════════════════════════════════════════════
+function updateTiles(items) {
+  const bar = document.getElementById('tilesBar');
+  bar.innerHTML = '';
+  const icons = { 'Véhicule':'🚗','Wilaya':'📍','Zone':'📍','Année':'📅','Puissance':'⚡','Usage':'🛣️','Valeur':'💰','Garanties':'🛡️' };
+  items.forEach(item => {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.innerHTML = `<span class="tile-icon">${icons[item.key]||'📌'}</span><div class="tile-content"><div class="tile-value">${item.value}</div><div class="tile-label">${item.key}</div></div>`;
+    bar.appendChild(tile);
+  });
+}
+
+// Extraire les tiles depuis le texte Dify (clés détectées automatiquement)
+function extractTilesFromText(text) {
+  const tiles = [];
+  const patterns = [
+    { key:'Véhicule',  re:/(?:véhicule|voiture|moto|camion)\s*[:\-]?\s*([A-Za-zÀ-ÿ0-9\s]+?)(?:\n|,|\.|\||$)/i },
+    { key:'Wilaya',    re:/(?:wilaya|région|zone)\s*[:\-]?\s*([A-Za-zÀ-ÿ\s]+?)(?:\n|,|\.|\||$)/i },
+    { key:'Puissance', re:/(\d+)\s*cv/i },
+    { key:'Valeur',    re:/(?:valeur|prix)\s*[:\-]?\s*([\d\s]+)\s*da/i },
+    { key:'Usage',     re:/usage\s*[:\-]?\s*([A-Za-zÀ-ÿ]+)/i },
+  ];
+  patterns.forEach(p => {
+    const m = text.match(p.re);
+    if (m) tiles.push({ key: p.key, value: m[1].trim() });
+  });
+  return tiles;
+}
+
+// ══════════════════════════════════════════════
+//  CARTE DEVIS
+// ══════════════════════════════════════════════
+function addDevisCard(devis) {
+  const chat = document.getElementById('chat');
+  const div  = document.createElement('div');
+  div.className = 'devis-card';
+  const devisId = devis._id || '';
+  const garList  = (devis.garanties || ['RC']).join(', ');
+  const v        = devis.total_ttc || 0;
+  const itemsHtml = (devis.items || []).map(i =>
+    `<div class="devis-line"><span class="line-label">${i.label}</span><span class="line-val">${i.value.toLocaleString()} DA</span></div>`
+  ).join('');
+  div.innerHTML = `
+    <div class="devis-header">
+      <div class="devis-icon">📋</div>
+      <div><div class="devis-title-text" id="devisTitle">Devis</div>
+      <div style="font-size:11px;color:var(--text-soft)">Garanties: ${garList}</div></div>
+    </div>
+    <div class="devis-lines">
+      ${itemsHtml}
+      <div class="devis-line"><span class="line-label">TVA (19%)</span><span class="line-val">${(devis.tva||0).toLocaleString()} DA</span></div>
+      <div class="devis-line"><span class="line-label">FGA (3%)</span><span class="line-val">${(devis.fga||0).toLocaleString()} DA</span></div>
+      <div class="devis-line"><span class="line-label">Mensualité</span><span class="line-val">~${Math.round(v/12).toLocaleString()} DA/mois</span></div>
+    </div>
+    <div class="devis-total-block">
+      <span class="total-label">Total TTC / an</span>
+      <span class="total-amount">${v.toLocaleString()} DA</span>
+    </div>
+    ${devis.reduction ? `<div class="devis-promo">🏷️ Réduction: ${devis.reduction}</div>` : ''}
+    <div class="devis-rating" id="rating_${devisId}">
+      <span style="font-size:13px;color:var(--text-soft)">Votre avis :</span>
+      <span class="stars">${[1,2,3,4,5].map(s => `<span class="star" data-stars="${s}" onclick="rateDevis('${devisId}',${s})">☆</span>`).join('')}</span>
+      <span class="avg-label" id="avg_${devisId}"></span>
+    </div>
+  `;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  calculateScore(devis).then(score => {
+    if (score) {
+      const scoreLine = document.createElement('div');
+      scoreLine.style.cssText = 'margin-top:6px;padding:6px 10px;background:var(--green-50);border:1px solid var(--green-100);border-radius:var(--radius-sm);display:flex;align-items:center;gap:8px;font-size:13px;';
+      const cls = score.overall >= 70 ? '🟢' : score.overall >= 40 ? '🟡' : '🔴';
+      scoreLine.innerHTML = `${cls} Score: <strong>${score.overall}/100</strong> · Économie ${score.economy} · Couverture ${score.coverage} · Protection ${score.protection}`;
+      div.insertBefore(scoreLine, div.lastElementChild);
+    }
+  });
+  if (devisId) refreshRatingDisplay(devisId);
+}
+
+// ══════════════════════════════════════════════
+//  APPEL API BACKEND LOCAL
+// ══════════════════════════════════════════════
+async function callBackend(msg) {
+  const resp = await fetch(`${API_BASE}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: msg, conversation_id: conversationId }),
+  });
+  if (!resp.ok) throw new Error(`Backend ${resp.status}`);
+  return resp.json();
+}
+
+async function callDevis(fields) {
+  const resp = await fetch(`${API_BASE}/devis/auto`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: JSON.stringify(fields), conversation_id: conversationId }),
+  });
+  if (!resp.ok) throw new Error(`Devis ${resp.status}`);
+  return resp.json();
+}
+
+async function callAnalyse(file) {
+  const form = new FormData();
+  form.append('file', file);
+  const resp = await fetch(`${API_BASE}/analyse`, { method: 'POST', body: form });
+  if (!resp.ok) throw new Error(`Analyse ${resp.status}`);
+  return resp.json();
+}
+
+// ══════════════════════════════════════════════
+//  ENVOI MESSAGE
+// ══════════════════════════════════════════════
+function sendQuick(text) {
+  document.getElementById('input').value = text;
+  sendMessage();
+}
+
+async function sendMessage() {
+  if (isProcessing) return;
+  const input = document.getElementById('input');
+  const msg   = input.value.trim();
+  if (!msg) return;
+
+  input.value = '';
+  addMessage(msg, 'user');
+
+  // Si en mode collecte auto, capturer la réponse comme valeur de champ
+  if (isCollecting && collecteStep < AUTO_QUESTIONS.length) {
+    const key = AUTO_QUESTIONS[collecteStep].key;
+    let valid = true;
+    if (key === 'garanties') {
+      devisFields[key] = msg.split(',').map(s => s.trim().toUpperCase());
+      if (!devisFields[key].includes('RC')) {
+        addMessage('RC (Responsabilité Civile) est obligatoire. Veuillez inclure RC dans vos garanties.', 'bot');
+        valid = false;
+      }
+    } else if (key === 'duree_mois') {
+      const v = parseInt(msg);
+      if (isNaN(v) || ![1,3,6,9,12].includes(v)) {
+        addMessage('Veuillez choisir une durée valide : 1, 3, 6, 9 ou 12 mois.', 'bot');
+        valid = false;
+      } else {
+        devisFields[key] = v;
+      }
+    } else if (key === 'valeur') {
+      const v = parseInt(msg.replace(/\s/g, ''));
+      if (isNaN(v) || v < 100000) {
+        addMessage('Veuillez entrer une valeur de véhicule valide (minimum 100 000 DA).', 'bot');
+        valid = false;
+      } else {
+        devisFields[key] = v;
+      }
+    } else if (key === 'age') {
+      const v = parseInt(msg);
+      if (isNaN(v) || v < 16 || v > 99) {
+        addMessage('Veuillez entrer un âge valide (entre 16 et 99 ans).', 'bot');
+        valid = false;
+      } else {
+        devisFields[key] = v;
+      }
+    } else if (key === 'puissance') {
+      const v = parseInt(msg);
+      if (isNaN(v) || v < 3 || v > 15) {
+        addMessage('Veuillez entrer une puissance fiscale valide (entre 3 et 15 CV).', 'bot');
+        valid = false;
+      } else {
+        devisFields[key] = v;
+      }
+    } else if (key === 'usage') {
+      const v = msg.toLowerCase();
+      if (!['personnel', 'professionnel'].includes(v)) {
+        addMessage('Veuillez répondre "personnel" ou "professionnel".', 'bot');
+        valid = false;
+      } else {
+        devisFields[key] = v;
+      }
+    } else {
+      devisFields[key] = msg.toLowerCase();
+    }
+    if (!valid) {
+      setTimeout(() => addMessage(AUTO_QUESTIONS[collecteStep].q, 'bot'), 200);
+      return;
+    }
+    isProcessing = true;
+    document.getElementById('sendBtn').disabled = true;
+    document.querySelectorAll('#suggestions button').forEach(b => b.disabled = true);
+    setTimeout(() => { collecteStep++; askNextAutoQuestion(); isProcessing = false; isCollecting = collecteStep < AUTO_QUESTIONS.length; document.getElementById('sendBtn').disabled = false; document.querySelectorAll('#suggestions button').forEach(b => b.disabled = false); }, 300);
+    return;
+  }
+
+  isProcessing = true;
+  document.getElementById('sendBtn').disabled = true;
+  document.querySelectorAll('#suggestions button').forEach(b => b.disabled = true);
+  addTyping();
+
+  try {
+    const data = await callBackend(msg);
+    removeTyping();
+
+    conversationId = data.conversation_id || conversationId;
+    const fullText = data.response || '';
+
+    addMessage(fullText, 'bot');
+
+    if (data.intent === 'QUOTE_AUTO' && data.step === 'collecte') {
+      startAutoCollecte();
+    } else if (data.intent === 'QUOTE_RD' && data.step === 'collecte') {
+      // RD collecte flow
+    }
+
+    const tiles = extractTilesFromText(fullText);
+    if (tiles.length > 0) updateTiles(tiles);
+
+    if (fullText) speakText(fullText, null);
+
+  } catch(err) {
+    removeTyping();
+    addMessage('Désolé, une erreur de connexion est survenue. Vérifiez que le serveur backend est lancé (uvicorn).', 'bot');
+    console.error('Backend error:', err);
+  }
+
+  isProcessing = false;
+  document.getElementById('sendBtn').disabled = false;
+  document.querySelectorAll('#suggestions button').forEach(b => b.disabled = false);
+  const inp = document.getElementById('input');
+  inp.focus();
+  inp.setSelectionRange(inp.value.length, inp.value.length);
+}
+
+// ══════════════════════════════════════════════
+//  COLLECTE DEVIS AUTO
+// ══════════════════════════════════════════════
+const AUTO_QUESTIONS = [
+  { key: 'valeur',    q: 'Quelle est la valeur de votre véhicule (en DA) ?' },
+  { key: 'puissance', q: 'Quelle est la puissance fiscale (CV) ?' },
+  { key: 'usage',     q: "Quel est l'usage du véhicule ? (personnel / professionnel)" },
+  { key: 'garanties', q: 'Quelles garanties souhaitez-vous ? (RC, VOL, VIV, BDG, etc. — séparées par virgule)' },
+  { key: 'duree_mois',q: 'Pour quelle durée ? (1, 3, 6, 9 ou 12 mois)' },
+  { key: 'age',       q: 'Quel est votre âge ?' },
+];
+
+let collecteStep = 0;
+
+function startAutoCollecte() {
+  collecteStep = 0;
+  devisFields = {};
+  isCollecting = true;
+  askNextAutoQuestion();
+}
+
+function askNextAutoQuestion() {
+  if (collecteStep >= AUTO_QUESTIONS.length) {
+    doDevisAuto();
+    return;
+  }
+  const q = AUTO_QUESTIONS[collecteStep];
+  addMessage(q.q, 'bot');
+}
+
+async function doDevisAuto() {
+  addTyping();
+  try {
+    const result = await callDevis(devisFields);
+    removeTyping();
+    if (result.devis) {
+      result.devis.fields = devisFields;
+      addDevisCard(result.devis);
+      addMessage("Voici votre devis ! Vous pouvez le sauvegarder avec le bouton 💾 ci-dessus, ou faire une autre simulation.", 'bot');
+    } else {
+      addMessage("Je n'ai pas pu calculer le devis. Vérifions les informations.", 'bot');
+    }
+  } catch (err) {
+    removeTyping();
+    addMessage('Erreur lors du calcul du devis.', 'bot');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  RESET CONVERSATION
+// ══════════════════════════════════════════════
+function resetConv() {
+  conversationId = '';
+  devisFields = {};
+  collecteStep = 0;
+  isCollecting = false;
+  document.getElementById('chat').innerHTML       = '';
+  document.getElementById('tilesBar').innerHTML   = '';
+  addMessage('Bienvenus sur AssurDevis, comment puis-je vous aider ?', 'bot', true);
+}
+
+// ══════════════════════════════════════════════
+//  SCAN & ANALYSE CONTRAT
+// ══════════════════════════════════════════════
+function triggerScan() {
+  closeScanModal();
+  document.getElementById('fileInput').click();
+}
+
+function triggerScanOptions() {
+  document.getElementById('scanModal').style.display = 'flex';
+}
+
+function closeScanModal() {
+  document.getElementById('scanModal').style.display = 'none';
+}
+
+function triggerFileUpload() {
+  closeScanModal();
+  document.getElementById('fileInput').click();
+}
+
+async function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+  uploadAndAnalyse(file);
+}
+
+async function uploadAndAnalyse(file) {
+  addTyping();
+  addMessage(`📄 Analyse du contrat en cours : ${file.name}`, 'user');
+  try {
+    const data = await callAnalyse(file);
+    removeTyping();
+    if (data.error) {
+      addMessage('❌ ' + data.error, 'bot');
+      return;
+    }
+    if (data.resultat && data.resultat.error) {
+      addMessage('❌ ' + data.resultat.error, 'bot');
+      if (data.resultat.raw) addMessage(data.resultat.raw.substring(0, 500), 'bot');
+      return;
+    }
+    if (data.texte_extrait) {
+      addMessage('📄 Texte extrait (mode dégradé) :<br/><pre style="font-size:11px;max-height:200px;overflow:auto">' + data.texte_extrait.substring(0, 1000) + '</pre>', 'bot', true);
+      addMessage('💡 Activez Ollama pour l\'analyse complète.', 'bot');
+      return;
+    }
+    if (data.resultat) {
+      addAnalyseCard(data.resultat);
+      addMessage('Souhaitez-vous faire une autre analyse ou revenir au devis ?', 'bot');
+    }
+  } catch (err) {
+    removeTyping();
+    addMessage('❌ Erreur de connexion au serveur. Vérifiez que le backend est lancé.', 'bot');
+  }
+}
+
+function addAnalyseCard(r) {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'analyse-card';
+  const reconnu = r.reconnu;
+  const score = r.score_similarite || 0;
+  const typeContrat = r.type_contrat || 'Inconnu';
+
+  let garantiesHtml = '';
+  if (r.garanties && r.garanties.length) {
+    garantiesHtml = '<div class="analyse-section"><div class="analyse-section-title">✅ Garanties</div>' +
+      r.garanties.map(g => `<span class="analyse-tag garantie">${g}</span>`).join('') + '</div>';
+  }
+
+  let exclusionsHtml = '';
+  if (r.exclusions && r.exclusions.length) {
+    exclusionsHtml = '<div class="analyse-section"><div class="analyse-section-title">❌ Exclusions</div>' +
+      r.exclusions.map(e => `<span class="analyse-tag exclusion">${e}</span>`).join('') + '</div>';
+  }
+
+  let clausesHtml = '';
+  if (r.clauses_importantes && r.clauses_importantes.length) {
+    clausesHtml = '<div class="analyse-section"><div class="analyse-section-title">⚠️ Clauses importantes</div>' +
+      r.clauses_importantes.map(c => `<div class="analyse-clause">${c}</div>`).join('') + '</div>';
+  }
+
+  let primesHtml = '';
+  if (r.prime_annuelle_ht) {
+    primesHtml = '<div class="analyse-section"><div class="analyse-section-title">💰 Prime annuelle HT</div><div style="font-size:18px;font-weight:700;">' +
+      r.prime_annuelle_ht.toLocaleString() + ' DA</div></div>';
+  }
+
+  let franchisesHtml = '';
+  if (r.franchises && Object.keys(r.franchises).length) {
+    franchisesHtml = '<div class="analyse-section"><div class="analyse-section-title">🔍 Franchises</div>' +
+      Object.entries(r.franchises).map(([k, v]) => `<div style="font-size:12px;">${k}: ${v ?? 'N/A'}</div>`).join('') + '</div>';
+  }
+
+  div.innerHTML = `
+    <h4>📄 ${reconnu ? '✅ Contrat reconnu' : '❌ Contrat non reconnu'}</h4>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:6px 0;">
+      <span style="font-weight:600;">${typeContrat}</span>
+      <span class="analyse-score ${reconnu ? 'valid' : 'invalid'}">${score}%</span>
+    </div>
+    <div style="height:6px;background:var(--cream-dark);border-radius:100px;margin-bottom:10px;overflow:hidden;">
+      <div style="height:100%;width:${score}%;background:${reconnu ? 'var(--green-400)' : 'var(--ad-400)'};border-radius:100px;transition:width .5s;"></div>
+    </div>
+    ${garantiesHtml}
+    ${exclusionsHtml}
+    ${primesHtml}
+    ${franchisesHtml}
+    ${clausesHtml}
+    ${r.resume_client ? '<div class="analyse-section"><div class="analyse-section-title">📝 Résumé</div><div style="font-size:12px;line-height:1.5;">' + r.resume_client + '</div></div>' : ''}
+  `;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// ══════════════════════════════════════════════
+//  SCORING & RATING
+// ══════════════════════════════════════════════
+
+async function calculateScore(devisData) {
+  try {
+    const resp = await fetch(`${API_BASE}/scoring/devis`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: JSON.stringify(devisData), conversation_id: '' }),
+    });
+    const data = await resp.json();
+    return data.score || null;
+  } catch(e) {
+    return null;
+  }
+}
+
+let ratingInFlight = false;
+
+async function rateDevis(devisId, stars) {
+  if (ratingInFlight || !devisId) return;
+  const container = document.getElementById(`rating_${devisId}`);
+  if (!container) return;
+  const starEls = container.querySelectorAll('.star');
+  starEls.forEach(el => {
+    el.onclick = null;
+    el.classList.add('readonly');
+    el.textContent = parseInt(el.dataset.stars) <= stars ? '★' : '☆';
+  });
+  ratingInFlight = true;
+  try {
+    const resp = await fetch(`${API_BASE}/rating`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: JSON.stringify({ devis_id: devisId, stars }), conversation_id: '' }),
+    });
+    const data = await resp.json();
+    if (data.stats) {
+      const label = container.querySelector('.avg-label');
+      label.innerHTML = `⭐ ${data.stats.average}/5 <span style="font-size:11px;color:var(--text-soft)">(${data.stats.count} avis)</span>`;
+    }
+  } catch(e) {
+    starEls.forEach(el => { el.onclick = null; });
+  }
+  ratingInFlight = false;
+}
+
+async function refreshRatingDisplay(devisId) {
+  try {
+    const resp = await fetch(`${API_BASE}/rating/stats`);
+    const data = await resp.json();
+    if (data.stats && data.stats.count > 0) {
+      const label = document.querySelector(`#rating_${devisId} .avg-label`);
+      if (label) label.innerHTML = `⭐ ${data.stats.average}/5 <span style="font-size:11px;color:var(--text-soft)">(${data.stats.count} avis)</span>`;
+    }
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+document.getElementById('input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+document.getElementById('input').addEventListener('keyup', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); }
+});
+
+addMessage('Bienvenus sur AssurDevis, comment puis-je vous aider ?', 'bot', true);
+</script>
+</body>
+</html>

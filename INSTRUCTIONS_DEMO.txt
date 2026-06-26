@@ -1,0 +1,199 @@
+═══════════════════════════════════════════════════════════════════════════════
+  ASSUREDEVIS AI v2.0 — GUIDE DE DÉMO COMPLET
+═══════════════════════════════════════════════════════════════════════════════
+
+Ce fichier vous explique étape par étape comment préparer votre clé USB,
+installer la démo sur n'importe quel PC, et présenter l'application
+à un client.
+
+═══════════════════════════════════════════════════════════════════════════════
+  1. PRÉPARATION CHEZ VOUS (avec Internet)
+═══════════════════════════════════════════════════════════════════════════════
+
+  ÉTAPE 1 — Télécharger Python (si pas déjà installé)
+  ─────────────────────────────────────────────────
+  Allez sur https://www.python.org/downloads/
+  Téléchargez Python 3.12.x (ou 3.13.x)
+  Lancez l'installateur → cochez "Add Python to PATH" → Install Now
+
+  Ou bien : téléchargez la version embeddable :
+    https://www.python.org/ftp/python/3.12.9/python-3.12.9-embed-amd64.zip
+  Décompressez-la dans le dossier portable\python_portable\
+
+  ÉTAPE 2 — Installer les dépendances Python
+  ─────────────────────────────────────────
+  Ouvrez une invite de commandes (cmd) et tapez :
+    pip install fastapi uvicorn httpx
+
+  ÉTAPE 3 — Installer Ollama
+  ─────────────────────────
+  Allez sur https://ollama.com/download
+  Téléchargez Ollama pour Windows.
+  Lancez l'installateur (OllamaSetup.exe).
+  Vérifiez : ouvrez cmd et tapez :
+    ollama --version
+
+  ÉTAPE 4 — Télécharger le modèle IA
+  ────────────────────────────────────
+  Ouvrez une invite de commandes :
+    ollama pull qwen2.5:7b
+
+  Cela prend 5-10 minutes selon votre connexion (4,5 Go).
+  Une fois terminé, le modèle est stocké dans :
+    %USERPROFILE%\.ollama\models\
+
+  Vous pouvez le copier sur la clé USB dans :
+    portable\ollama_models\
+
+  ÉTAPE 5 — Optionnel : Ollama portable sur la clé
+  ────────────────────────────────────────────────
+  Après installation d'Ollama sur votre PC, copiez tout le dossier :
+    %LOCALAPPDATA%\Programs\Ollama\
+  vers la clé USB dans :
+    portable\ollama\
+
+  Le run.bat détectera automatiquement ollama.exe dans ce dossier
+  si Ollama n'est pas installé sur le PC de démo.
+
+  ÉTAPE 6 — Copier sur la clé USB
+  ────────────────────────────────
+  Copiez tout le dossier portable\ sur votre clé USB.
+  (Vous pouvez aussi utiliser copier_cle.bat qui vous guidera)
+
+═══════════════════════════════════════════════════════════════════════════════
+  2. SUR LE PC DE DÉMO (chez le client)
+═══════════════════════════════════════════════════════════════════════════════
+
+  SCÉNARIO A : Démo rapide — Devis uniquement (lite)
+  ─────────────────────────────────────────────────────
+  Pas besoin d'Ollama, pas besoin de GPU, pas besoin d'Internet.
+
+  1. Insérez la clé USB
+  2. Ouvrez le dossier de la clé
+  3. Double-cliquez sur run_lite.bat
+  4. Attendez 2-3 secondes que le serveur démarre
+  5. Le navigateur s'ouvre automatiquement sur :
+       http://localhost:5000
+  6. Vous voyez l'interface de Sana, l'assistante AssurDevis
+
+  Ce qui marche :
+  ✅ Cliquer sur "Devis Auto"
+  ✅ Répondre aux questions (valeur, CV, usage, garanties, durée, âge)
+  ✅ Voir le devis calculé avec TVA, FGA, mensualité
+  ✅ Carte récapitulative du devis
+  ✅ Synthèse vocale (bouton 🔊)
+  ✅ Commande vocale (micro 🎤)
+  ✅ Export / impression possible
+
+  Ce qui ne marche PAS (normal sans IA) :
+  ❌ Les questions générales ("c'est quoi une RC ?")
+  ❌ La conversation libre
+
+  SCÉNARIO B : Démo complète — Avec IA conversationnelle
+  ────────────────────────────────────────────────────────
+  Nécessite : Ollama installé, modèle qwen2.5:7b téléchargé,
+  16 Go de RAM minimum, CPU moderne ou GPU.
+
+  1. Assurez-vous qu'Ollama est installé sur le PC
+     (ou dézippez la version portable dans portable\ollama\)
+  2. Si le modèle n'est pas sur le PC :
+     - Copiez le dossier ollama_models\ depuis la clé
+     - Ou lancez : ollama pull qwen2.5:7b (besoin Internet)
+  3. Double-cliquez sur run.bat
+  4. Le script détecte Ollama et le lance automatiquement
+  5. Le navigateur s'ouvre sur http://localhost:5000
+
+  Ce qui marche EN PLUS du scénario A :
+  ✅ Questions libres : "Quels sont les garanties obligatoires ?"
+  ✅ Questions tarif : "C'est combien une RC pour un 7 CV ?"
+  ✅ Devis automatique en langage naturel
+  ✅ La base documentaire (5 fichiers .md) est accessible via RAG
+
+═══════════════════════════════════════════════════════════════════════════════
+  3. PENDANT LA DÉMO — Script de présentation
+═══════════════════════════════════════════════════════════════════════════════
+
+  --- Accueil (30 secondes) ---
+  "Bonjour, je vais vous présenter AssurDevis, notre solution IA
+  souveraine de devis et conseil en assurance."
+
+  --- Scénario recommandé (3 minutes) ---
+  1. Tapez : "Bonjour"
+     → Sana répond (mode complet) ou invite au devis (mode lite)
+
+  2. Tapez : "Je veux un devis auto"
+     → Sana lance la collecte étape par étape
+
+  3. Répondez aux questions :
+     "2000000" (valeur)
+     "7" (CV)
+     "personnel" (usage)
+     "RC, VOL, BDG" (garanties)
+     "12" (durée)
+     "35" (âge)
+     → Le devis s'affiche avec total TTC, TVA, FGA, mensualité
+
+  4. (Mode complet seulement) : "Qu'est-ce que la RC ?"
+     → Sana répond avec la base documentaire
+
+  --- Arguments de vente ---
+  • 100% souverain : zéro API étrangère, zéro fuite de données
+  • Zéro abonnement : tout est sur votre serveur
+  • Base documentaire personnalisable (lois algériennes, vos tarifs)
+  • Moteur de devis transparent (formules visibles et auditables)
+  • Prêt pour le .ai de votre compagnie
+
+═══════════════════════════════════════════════════════════════════════════════
+  4. ARCHITECTURE TECHNIQUE (pour le responsable IT)
+═══════════════════════════════════════════════════════════════════════════════
+
+  User ──HTTP──► FastAPI (port 5000)
+                  │
+                  ├── /devis/auto → engine.py (Python, formules métier)
+                  ├── /devis/rd   → engine.py
+                  ├── /chat       → Ollama (LLM local)
+                  │                  └─ RAG (knowledge/*.md)
+                  └── /           → static/index.html (frontend)
+
+  Tout tient sur un VPS 2 vCPU / 4 Go RAM (mode lite)
+  ou 4 vCPU / 16 Go RAM (mode complet avec IA).
+
+  Déploiement production :
+  1. Copier le dossier sur le serveur
+  2. Installer Python + pip install fastapi uvicorn httpx
+  3. Installer Ollama + qwen2.5:7b (ou 1.5b pour moins de RAM)
+  4. Lancer : uvicorn app.main:app --host 0.0.0.0 --port 5000
+  5. Mettre derrière Nginx pour le domaine
+
+  Zéro abonnement. Zéro API externe. Souveraineté totale.
+
+═══════════════════════════════════════════════════════════════════════════════
+  5. DÉPANNAGE
+═══════════════════════════════════════════════════════════════════════════════
+
+  Problème : "Python n'est pas reconnu"
+  → Installez Python 3.12+ depuis python.org
+  → Ou décompressez python-3.12.9-embed-amd64.zip dans python_portable\
+
+  Problème : "Le serveur ne démarre pas (port déjà utilisé)"
+  → Changez le port dans run.bat : --port 5000 → --port 8080
+  → Vérifiez qu'aucun autre serveur ne tourne sur le même port
+
+  Problème : "Le navigateur ne s'ouvre pas"
+  → Ouvrez manuellement http://localhost:5000
+  → Vérifiez la console : python -m uvicorn app.main:app --port 5000
+
+  Problème : "Ollama ne répond pas"
+  → Mode complet : le mode dégradé est automatique (devis seuls)
+  → Vérifiez qu'Ollama tourne : http://localhost:11434/api/tags
+
+  Problème : "Le devis affiche 0 DA"
+  → La valeur du véhicule est obligatoire (plus de 0)
+
+  Problème : "La clé USB n'est pas reconnue"
+  → Formatez-la en NTFS ou exFAT
+  → Les fichiers .bat doivent être exécutés directement depuis la clé
+
+═══════════════════════════════════════════════════════════════════════════════
+  Contact : AssurDevis — support@assurdevis.dz
+═══════════════════════════════════════════════════════════════════════════════
