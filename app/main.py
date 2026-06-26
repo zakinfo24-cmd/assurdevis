@@ -282,6 +282,10 @@ def search_knowledge(query: str, top_k: int = 3, intent: str = "QUESTION_INFO") 
 
 @app.get("/")
 async def root():
+    """Serve index.html"""
+    index_path = STATIC / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path), media_type="text/html")
     return {"service": "AssurDevis", "version": "3.0", "status": "online"}
 
 
@@ -553,3 +557,4 @@ async def scoring_devis_endpoint(req: ChatRequest):
 async def health():
     groq = await check_groq()
     return {"status": "ok", "groq": groq, "model": GROQ_MODEL, "keys_loaded": len(_GROQ_KEYS), "active_key": _groq_key_index + 1, "version": "3.0"}
+
