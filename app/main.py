@@ -38,9 +38,30 @@ if STATIC.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 
 # ── Groq API (remplace Ollama) ──────────────────────────────────────────────
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL   = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-GROQ_URL     = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+# Rotation automatique des clés Groq
+_GROQ_KEYS = [
+    k for k in [
+        os.getenv("GROQ_API_KEY"),
+        os.getenv("GROQ_API_KEY_2"),
+        os.getenv("GROQ_API_KEY_3"),
+        os.getenv("GROQ_API_KEY_4"),
+        os.getenv("GROQ_API_KEY_5"),
+    ] if k
+]
+_groq_key_index = 0
+
+def get_groq_key() -> str:
+    return _GROQ_KEYS[_groq_key_index] if _GROQ_KEYS else ""
+
+def rotate_groq_key():
+    global _groq_key_index
+    _groq_key_index = (_groq_key_index + 1) % len(_GROQ_KEYS)
+    logging.getLogger(__name__).warning(
+        "Rotation clé Groq → clé %d/%d", _groq_key_index + 1, len(_GROQ_KEYS)
+    )
 
 KNOWLEDGE_DIR     = BASE / "knowledge"
 INSTRUCTIONS_PATH = BASE / "app" / "instructions_assurdevis.txt"
@@ -128,8 +149,10 @@ async def _startup():
     except Exception:
         _REFERENCE_TEXT = ""
     asyncio.create_task(_export_loop())
-    if not GROQ_API_KEY:
-        logging.getLogger(__name__).warning("GROQ_API_KEY non définie — les réponses IA seront dégradées.")
+    if not _GROQ_KEYS:
+        logging.getLogger(__name__).warning("Aucune GROQ_API_KEY définie — les réponses IA seront dégradées.")
+    else:
+        logging.getLogger(__name__).info("%d clé(s) Groq chargée(s).", len(_GROQ_KEYS))
 
 
 REPORT_DATA: list = []
@@ -143,14 +166,14 @@ class ChatRequest(BaseModel):
 # ── Groq API helpers ────────────────────────────────────────────────────────
 
 async def check_groq() -> bool:
-    """Vérifie que la clé Groq est présente et valide (ping léger)."""
-    if not GROQ_API_KEY:
+    """Vérifie que la clé Groq active est valide."""
+    if not _GROQ_KEYS:
         return False
     try:
         async with httpx.AsyncClient(timeout=8) as client:
             resp = await client.get(
                 "https://api.groq.com/openai/v1/models",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                headers={"Authorization": f"Bearer {get_groq_key()}"},
             )
             return resp.status_code == 200
     except Exception:
@@ -158,21 +181,30 @@ async def check_groq() -> bool:
 
 
 async def query_groq(messages: list[dict]) -> str:
-    """Appelle l'API Groq (compatible OpenAI) et retourne la réponse texte."""
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json",
-    }
+    """Appelle Groq avec rotation automatique si limite atteinte (429)."""
+    if not _GROQ_KEYS:
+        raise RuntimeError("Aucune clé Groq configurée")
+
+    headers = {"Content-Type": "application/json"}
     payload = {
         "model": GROQ_MODEL,
         "messages": messages,
         "temperature": 0.3,
         "max_tokens": 800,
     }
-    async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.post(GROQ_URL, json=payload, headers=headers)
-        resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+
+    attempts = len(_GROQ_KEYS)
+    for _ in range(attempts):
+        headers["Authorization"] = f"Bearer {get_groq_key()}"
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(GROQ_URL, json=payload, headers=headers)
+            if resp.status_code == 429:
+                rotate_groq_key()
+                continue
+            resp.raise_for_status()
+            return resp.json()["choices"][0]["message"]["content"]
+
+    raise RuntimeError("Toutes les clés Groq sont épuisées")
 
 
 # ── Knowledge & Intent ───────────────────────────────────────────────────────
@@ -245,11 +277,11 @@ async def chat(req: ChatRequest):
     groq_on = await check_groq()
     if not groq_on:
         fallback = {
-            "GREETING":      "Bienvenue sur AssurDevis, comment puis-je vous aider ?",
+            "GREETING":      "Bienvenue sur AssurDevis ! / أهلاً بك في AssurDevis ! En quoi puis-je vous aider ?",
             "QUOTE_AUTO":    "Pour un devis auto, tapez « devis auto » et je vous guide étape par étape.",
             "QUOTE_RD":      "Pour un devis habitation, tapez « devis maison » et je vous guide.",
             "ORIENTATION":   "Précisez votre wilaya et je vous orienterai vers l'agence la plus proche.",
-            "QUESTION_INFO": "Je suis l'assistant AssurDevis. Posez votre question, je vous réponds.",
+            "QUESTION_INFO": "Je suis AssurDevis, votre assistant en assurance. Posez votre question, je vous réponds.",
         }
         return {
             "response": fallback.get(intent, "Je suis temporairement en mode dégradé. Tapez « devis auto » pour commencer."),
@@ -259,29 +291,43 @@ async def chat(req: ChatRequest):
 
     intent_context = {
         "GREETING": (
-            "L'utilisateur salue. Réponds chaleureusement en te présentant comme "
-            "l'assistant virtuel Sana, spécialisée en assurance automobile algérienne. "
-            "Propose-lui de l'aider : devis auto, questions sur les garanties, ou orientation vers une agence."
+            "L'utilisateur salue. Réponds avec chaleur et bonne humeur en te présentant comme "
+            "AssurDevis, l'assistant virtuel intelligent spécialisé en assurance en Algérie. "
+            "Ta phrase d'accueil est exactement : 'Bienvenue sur AssurDevis ! En quoi puis-je vous aider ?' "
+            "Tu peux ajouter une touche légère et sympathique — une petite blague douce ou un mot "
+            "chaleureux — pour mettre l'utilisateur à l'aise, mais reste professionnel. "
+            "Propose-lui : devis auto, questions sur les garanties, analyse de contrat, ou orientation. "
+            "Tu réponds en français par défaut, mais si l'utilisateur écrit en arabe classique (فصحى), "
+            "réponds-lui en arabe classique avec la même qualité et le même ton."
         ),
         "QUOTE_AUTO": (
-            "L'utilisateur veut un devis assurance auto. Guide-le de façon conversationnelle "
-            "pour collecter : marque et modèle du véhicule, année de mise en circulation, "
-            "valeur vénale en DA, puissance fiscale (CV), wilaya, usage (personnel ou professionnel), "
-            "et garanties souhaitées (RC obligatoire, dommages collision, vol/incendie, tous risques). "
-            "Pose les questions une par une, naturellement."
+            "L'utilisateur veut un devis assurance auto. Guide-le de façon conversationnelle et chaleureuse, "
+            "comme un conseiller expert qui connaît bien son métier. "
+            "Collecte naturellement : marque et modèle, année, valeur vénale en DA, puissance fiscale (CV), "
+            "wilaya, usage (personnel ou professionnel), garanties souhaitées (RC obligatoire, "
+            "dommages collision, vol/incendie, tous risques). "
+            "Pose une question à la fois. Tu peux glisser un commentaire léger et bienveillant "
+            "('Excellent choix !', 'Bonne question !'). "
+            "Réponds en français ou en arabe classique selon la langue de l'utilisateur."
         ),
         "QUOTE_RD": (
-            "L'utilisateur veut un devis pour une autre branche (habitation, RC pro, etc.). "
-            "Guide-le pour identifier la branche exacte et collecter les informations nécessaires."
+            "L'utilisateur veut un devis pour une autre branche (habitation, RC pro, incendie, etc.). "
+            "Guide-le avec expertise et chaleur pour identifier la branche exacte "
+            "et collecter les informations nécessaires. "
+            "Réponds en français ou en arabe classique selon la langue de l'utilisateur."
         ),
         "ORIENTATION": (
-            "L'utilisateur cherche une agence ou un bureau. "
-            "Demande-lui sa wilaya pour l'orienter vers l'agence la plus proche."
+            "L'utilisateur cherche une agence ou un bureau d'assurance. "
+            "Demande-lui sa wilaya avec gentillesse pour l'orienter vers l'agence la plus proche. "
+            "Réponds en français ou en arabe classique selon la langue de l'utilisateur."
         ),
         "QUESTION_INFO": (
             "L'utilisateur pose une question sur l'assurance. "
-            "Réponds avec précision en te basant sur la réglementation algérienne en vigueur "
-            "(Ordonnance 95-07, circulaires CNA, grilles ORASS 2026)."
+            "Réponds avec précision, expertise et une touche de chaleur humaine. "
+            "Base-toi sur la réglementation algérienne en vigueur : "
+            "Ordonnance 95-07, circulaires CNA, grilles ORASS 2026. "
+            "Si la question est légère ou amusante, tu peux répondre avec un peu d'humour bienveillant. "
+            "Réponds en français ou en arabe classique (فصحى) selon la langue utilisée par l'interlocuteur."
         ),
     }
 
@@ -370,7 +416,7 @@ async def analyse_contrat(file: UploadFile = File(...)):
     # Analyse du contrat via Groq directement
     analyse_prompt = [
         {"role": "system", "content": (
-            "Tu es Sana, experte en assurance algérienne (Ordonnance 95-07). "
+            "Tu es AssurDevis, expert en assurance algérienne (Ordonnance 95-07). "
             "Analyse ce contrat d'assurance et fournis : "
             "1) Résumé des garanties couvertes, "
             "2) Montant des primes et franchises, "
@@ -477,4 +523,4 @@ async def scoring_devis_endpoint(req: ChatRequest):
 @app.get("/health")
 async def health():
     groq = await check_groq()
-    return {"status": "ok", "groq": groq, "model": GROQ_MODEL, "version": "3.0"}
+    return {"status": "ok", "groq": groq, "model": GROQ_MODEL, "keys_loaded": len(_GROQ_KEYS), "active_key": _groq_key_index + 1, "version": "3.0"}
