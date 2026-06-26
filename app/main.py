@@ -153,6 +153,15 @@ async def _startup():
         logging.getLogger(__name__).warning("Aucune GROQ_API_KEY définie — les réponses IA seront dégradées.")
     else:
         logging.getLogger(__name__).info("%d clé(s) Groq chargée(s).", len(_GROQ_KEYS))
+    
+    # Vérifier que les fichiers MD existent
+    if KNOWLEDGE_DIR.exists():
+        md_files = list(KNOWLEDGE_DIR.glob("*.md"))
+        logging.getLogger(__name__).info("Knowledge base: %d fichier(s) trouvé(s) dans %s", len(md_files), KNOWLEDGE_DIR)
+        for mf in sorted(md_files):
+            logging.getLogger(__name__).info("  - %s (%d octets)", mf.name, mf.stat().st_size)
+    else:
+        logging.getLogger(__name__).warning("Dossier knowledge introuvable: %s", KNOWLEDGE_DIR)
 
 
 REPORT_DATA: list = []
@@ -210,95 +219,103 @@ async def query_groq(messages: list[dict]) -> str:
 # ── Knowledge & Intent ───────────────────────────────────────────────────────
 
 def search_knowledge(query: str, top_k: int = 3, intent: str = "QUESTION_INFO") -> list[str]:
+    # Routage par intent — tous les fichiers disponibles sauf restrictions explicites
     INTENT_FILES = {
-        "QUESTION_INFO": ["dify_03_references_legales.md", "dify_05_culture_assurance.md"],
+        "QUESTION_INFO": [
+            "dify_01_calcul_tarification.md",
+            "dify_02_garanties_produits.md",
+            "dify_03_references_legales.md",
+            "dify_05_culture_assurance.md"
+        ],
         "GREETING":      [],
-        "ORIENTATION":   ["dify_04_processus_commercial.md"],
-        "QUOTE_AUTO":    None,
-        "QUOTE_RD":      None,
+        "ORIENTATION":   [
+            "dify_04_processus_commercial.md",
+            "dify_02_garanties_produits.md"
+        ],
+        "QUOTE_AUTO": [
+            "dify_01_calcul_tarification.md",
+            "dify_02_garanties_produits.md",
+            "dify_04_processus_commercial.md"
+        ],
+        "QUOTE_RD": [
+            "dify_02_garanties_produits.md",
+            "dify_04_processus_commercial.md"
+        ],
     }
+    
     allowed     = INTENT_FILES.get(intent)
     query_lower = query.lower()
     results     = []
     for md_file in sorted(KNOWLEDGE_DIR.glob("*.md")):
         if allowed is not None and md_file.name not in allowed:
             continue
-        with open(md_file, encoding="utf-8") as f:
-            content = f.read()
-        sections = re.split(r"\n#{1,3}\s+", content)
-        for section in sections:
-            score = sum(1 for word in query_lower.split() if word in section.lower())
-            if score > 0:
-                name = md_file.name.replace("dify_", "").replace(".md", "").replace("_", " ")
-                results.append((score, f"[{name}] {section.strip()[:1500]}"))
-    results.sort(key=lambda x: -x[0])
-    return [r[1] for r in results[:top_k]]
+        try:
+            with open(md_file, encoding="utf-8") as f:
+                content = f.read()
+            # Récupère les sections pertinentes (simple recherche par mots-clés)
+            lines = content.split("\n")
+            matching_sections = []
+            for i, line in enumerate(lines):
+                if any(word in line.lower() for word in query_lower.split()):
+                    start = max(0, i - 2)
+                    end = min(len(lines), i + 10)
+                    matching_sections.append("\n".join(lines[start:end]))
+            if matching_sections:
+                results.extend(matching_sections[:top_k])
+        except Exception:
+            pass
+    
+    return results[:top_k] if results else []
 
-
-def detect_intent(msg: str) -> str:
-    msg_lower = msg.lower()
-    if any(w in msg_lower for w in ["devis", "tarif", "prix", "combien", "estimation", "assurance auto", "assurance voiture", "cotation"]):
-        if any(w in msg_lower for w in ["maison", "habitation", "mrh", "villa", "appartement", "mr"]):
-            return "QUOTE_RD"
-        return "QUOTE_AUTO"
-    if any(w in msg_lower for w in ["agence", "orientation", "bureau", "rencontrer", "rendez-vous", "rdv", "ou se trouve", "adresse"]):
-        return "ORIENTATION"
-    if any(w in msg_lower for w in ["salut", "bonjour", "salam", "bonsoir"]):
-        return "GREETING"
-    return "QUESTION_INFO"
-
-
-# ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.get("/")
 async def root():
-    index = STATIC / "index.html"
-    if index.exists():
-        return FileResponse(str(index))
-    return {"status": "AssurDevis API", "message": "Frontend non trouvé. Utilisez /docs pour l'API."}
+    return {"service": "AssurDevis", "version": "3.0", "status": "online"}
+
+
+@app.post("/init")
+async def init_conversation():
+    conv_id = str(uuid.uuid4())
+    conversations[conv_id] = {
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "history": [],
+    }
+    increment_counter("conversations")
+    return {"conversation_id": conv_id}
 
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
-    conv_id = req.conversation_id or str(uuid.uuid4())
-    if conv_id not in conversations:
-        conversations[conv_id] = {"history": [], "fields": {}}
-    conv = conversations[conv_id]
+    if not req.conversation_id:
+        raise HTTPException(400, "conversation_id requis")
+
+    conv_id = req.conversation_id
+    conv = conversations.get(conv_id)
+    if not conv:
+        raise HTTPException(404, "Conversation not found")
+
+    # Détection d'intent simple
+    msg_lower = req.message.lower()
+    if any(w in msg_lower for w in ["devis auto", "assurance auto", "voiture"]):
+        intent = "QUOTE_AUTO"
+    elif any(w in msg_lower for w in ["devis", "habitation", "maison", "pro", "rc", "décennale"]):
+        intent = "QUOTE_RD"
+    elif any(w in msg_lower for w in ["agence", "bureau", "où"]):
+        intent = "ORIENTATION"
+    elif any(w in msg_lower for w in ["bonjour", "salut", "hello", "hi", "salam"]):
+        intent = "GREETING"
+    else:
+        intent = "QUESTION_INFO"
+
+    increment_counter(f"intent_{intent}")
     conv["history"].append({"role": "user", "content": req.message})
 
-    intent = detect_intent(req.message)
-
-    try:
-        increment_counter("total_consultations")
-    except Exception:
-        pass
-
-    # Vérifier Groq — fallback dégradé si indisponible
-    groq_on = await check_groq()
-    if not groq_on:
-        fallback = {
-            "GREETING":      "Bienvenue sur AssurDevis ! / أهلاً بك في AssurDevis ! En quoi puis-je vous aider ?",
-            "QUOTE_AUTO":    "Pour un devis auto, tapez « devis auto » et je vous guide étape par étape.",
-            "QUOTE_RD":      "Pour un devis habitation, tapez « devis maison » et je vous guide.",
-            "ORIENTATION":   "Précisez votre wilaya et je vous orienterai vers l'agence la plus proche.",
-            "QUESTION_INFO": "Je suis AssurDevis, votre assistant en assurance. Posez votre question, je vous réponds.",
-        }
-        return {
-            "response": fallback.get(intent, "Je suis temporairement en mode dégradé. Tapez « devis auto » pour commencer."),
-            "conversation_id": conv_id,
-            "intent": intent,
-        }
-
+    # Contexte par intent
     intent_context = {
         "GREETING": (
-            "L'utilisateur salue. Réponds avec chaleur et bonne humeur en te présentant comme "
-            "AssurDevis, l'assistant virtuel intelligent spécialisé en assurance en Algérie. "
-            "Ta phrase d'accueil est exactement : 'Bienvenue sur AssurDevis ! En quoi puis-je vous aider ?' "
-            "Tu peux ajouter une touche légère et sympathique — une petite blague douce ou un mot "
-            "chaleureux — pour mettre l'utilisateur à l'aise, mais reste professionnel. "
-            "Propose-lui : devis auto, questions sur les garanties, analyse de contrat, ou orientation. "
-            "Tu réponds en français par défaut, mais si l'utilisateur écrit en arabe classique (فصحى), "
-            "réponds-lui en arabe classique avec la même qualité et le même ton."
+            "Réponds chaleureusement et présente AssurDevis comme un assistant expert en assurance algérienne. "
+            "Propose aide sur devis auto, habitation, RC pro, ou questions sur l'assurance. "
+            "Sois amical et encourageant. Réponds en français ou en arabe (فصحى) selon la langue de l'utilisateur."
         ),
         "QUOTE_AUTO": (
             "L'utilisateur veut un devis assurance auto. Guide-le de façon conversationnelle et chaleureuse, "
