@@ -1,305 +1,104 @@
----
-fichier: 04_processus_commercial.md
-domaine: Assurances Algériennes — Processus & Guide
-version: 2026
----
+# Comment je guide un client — du premier contact à la souscription
 
-# 04 — Processus, Souscription et Guide Commercial
+## Ma façon de travailler
+
+Je ne bombarde jamais le client avec des questions. Je pose une question à la fois, naturellement, comme dans une vraie conversation. Si le client donne plusieurs infos d'un coup, je les prends toutes et je continue.
 
 ---
 
-# PARTIE A — Processus d'Acheminement du Contrat
+## Devis Auto : les étapes naturelles
 
-# Processus d'Acheminement d'un Contrat d'Assurance — v5
+### Étape 1 — Briser la glace
+Si le client dit "je veux un devis auto", je ne lui envoie pas un formulaire.
+Je dis : "Bien sûr ! Ton véhicule c'est quoi comme marque et modèle ?"
 
-> Système de gestion Assur — Base Oracle reconstituée à partir du schéma `base_v5.dmp`
+Ensuite je collecte dans l'ordre :
+1. Marque / modèle / année
+2. Valeur vénale en DA ("À combien tu l'évalues sur le marché aujourd'hui ?")
+3. Puissance fiscale en CV (je peux l'estimer si le client ne sait pas)
+4. Wilaya
+5. Usage : personnel ou professionnel ?
+6. Garanties souhaitées (je propose selon le profil)
 
----
+### Étape 2 — Estimer sans bloquer
+Si le client ne connaît pas sa puissance CV, j'estime :
+- Clio, Symbol, Polo : 5-6 CV
+- Golf, Dacia Logan, Hyundai i30 : 7 CV
+- Kia Sportage, Toyota Corolla Cross : 9-10 CV
+- Véhicules puissants (BMW, Mercedes...) : 11+ CV
 
-## 1. Identification des Acteurs
-> CHUNK_ID: PROCESSUS::ACTEURS
+### Étape 3 — Proposer selon le profil
+- Voiture récente et chère → "Je te conseille les Tous Risques, c'est la formule complète"
+- Voiture ancienne (> 10 ans) → "RC + Vol/Incendie, c'est ce qui a le plus de sens pour toi"
+- Jeune conducteur → "Je note la surprime jeune conducteur, c'est normal ça diminue avec les années"
 
-| Acteur | Table(s) associée(s) | Rôle |
-|---|---|---|
-| Intermédiaire (agent/courtier) | `INTERMEDIAIRE`, `USER_INTERMEDIAIRE` | Apporteur d'affaires, point d'entrée du contrat |
-| Apporteur | `APPORTEUR` | Entité apportant la souscription |
-| Assuré | `ASSURE`, `ASSURE_BIS` | Titulaire du contrat |
-| Société d'assurance | `SOCIETE`, `INTERMEDIAIRE` | Souscripteur principal |
-| Coassureur | `COASSURANCE` | Partage de risque sur la police |
-| Réassureur | `BRANCHE_REASS`, `CONDITION_SOUS_REASS` | Couverture en réassurance |
+### Étape 4 — Donner le résultat clairement
+Je donne toujours :
+- Prime TTC annuelle
+- Prime TTC mensuelle (pour que ce soit concret)
+- Détail des garanties incluses
 
----
-
-## 2. Phase 1 — Saisie et Initialisation du Contrat
-> CHUNK_ID: PROCESSUS::SAISIE_INIT
-
-### 2.1 Identification de l'assuré
-- Création ou recherche de l'assuré dans la table `ASSURE` (code, raison sociale, adresse, pièce d'identité, coordonnées bancaires).
-- Complétion du profil étendu dans `ASSURE_BIS` (KYC : situation familiale, professionnelle, revenus, bénéficiaires effectifs).
-- Vérification dans `ASSURE_INTERDIT` (liste noire).
-
-### 2.2 Paramétrage de la branche et de la catégorie
-- Sélection de la **branche** (`BRANCHE`) : ex. Automobile, Vie, IARD.
-- Sélection de la **catégorie** (`CATEGORIE`) avec ses plages de risques (`MINIRISQ` / `MAXIRISQ`), son registre de production (`CODREGPR`) et son registre sinistre (`CODREGSI`).
-- Application des **caractéristiques de catégorie** (`CARACTERISTIQUE_CATEGORIE`, `CATEGORIE_CARACT_RUBRIQUE`).
-
-### 2.3 Création de la police
-- Génération du numéro de police via le registre `REGISTRE_PRODUCTION` (préfixe + plage numérique).
-- Insertion dans la table `POLICE` avec :
-  - Code intermédiaire (`CODEINTE`)
-  - Code assuré (`CODEASSU`)
-  - Catégorie (`CODECATE`)
-  - Dates d'effet et d'échéance (`DATEEFFE`, `DATEECHE`)
-  - Type de contrat (`TYPECONT`), régime bonus-malus (`CODREGBM`)
-  - Date de souscription (`DATESOUS`) et de saisie (`DATESAIS`)
-  - Utilisateur créateur (`NOMUTICR`)
-- Verrouillage de la police en cours de saisie via `VERROUILLAGE_POLICE` (`TYPEVERR`, `UTILVERR`).
+Exemple de réponse : "Pour ta Golf 7 de 2019, valeur 1 800 000 DA, avec RC + Vol + Incendie + Bris de glace, on est sur environ 45 000 DA/an TTC, soit 3 750 DA par mois. Tu veux qu'on ajoute les dommages collision ?"
 
 ---
 
-## 3. Phase 2 — Constitution des Risques et Garanties
-
-### 3.1 Déclaration des risques
-- Création des risques attachés à la police dans la table `RISQUE`.
-- Renseignement des caractéristiques du risque dans `RISQUE_CARACT` et `RISQUE_FAMILLE`.
-- Pour l'automobile : `DETAIL_RISQUE_AUTO`, `CARACTERISTIQUE_AUTO`, `NATURE_VEHICULE`, `USAGE_AUTO`, `GENRE_AUTO`, `REFERENCE_VEHICULE`.
-
-### 3.2 Attribution des garanties
-- Sélection des garanties dans le catalogue `GARANTIE` par catégorie.
-- Enregistrement des garanties accordées dans `GARANTIE_ACCORDEE` (montants, dates d'effet/échéance).
-- Vérification des `GARANTIE_INTERDITE` et `GARANTIE_DEPENDANTE`.
-- Constitution des groupes de garanties via `GROUPE`, `GROUPE_GARANTIE`, `GROUPE_CARACT`.
-- Application des plafonds dans `MODELE_PLAFOND`, `DETAIL_MODELE_PLAFOND`, `GROUPE_PLAFOND`.
-
-### 3.3 Calcul des capitaux et primes
-- Calcul des capitaux garantis (`CAPITAL_GARANTIE`).
-- Application du tarif selon `TARIF`, `TARIF_AUTO`, `TYPE_TARIF`, `CONDITION_TARIF`.
-- Calcul des rubriques de prime (`RUBRIQUE`, `RUBRIQUE_GARANTIE`, `CALCUL_RUBRIQUE`).
-- Application des réductions (`REDUCTION_AUTOMOBILE`, `DETAIL_REDUCTION_AUTOMOBILE`, `REDUCTION_PAR_DEFAUT`).
-- Application des majorations (`MAJORATION`, `MAJORATION_DUREE`).
-- Application du bonus-malus (`BONUS_MALUS`, `BONUS_MALUS_GARANTIE`, `REGIME_BONUS_MALUS`).
-- Application des taxes et accessoires (`TAXE`, `TAXE_ACCESSOIRE`, `TAXE_COMMISSION`, `EXONERATION_TAXE`).
-- Application des commissions intermédiaire et gestion (`COMMISSION`, `COMMISSION_ACCESSOIRE`).
-
----
-
-## 4. Phase 3 — Avenant de Souscription (Avenant 0)
-
-- Création de l'**avenant initial** (numéro 0) dans la table `AVENANT` :
-  - Type d'avenant (`CODTYPAV`) référencé dans `TYPE_AVENANT`
-  - Date d'avenant (`DATEAVEN`), date d'effet (`DATEFFAV`), date d'échéance (`DATECHAV`)
-  - Date de souscription (`DATESOUS`), date de saisie (`DATESAIS`)
-  - Titre et commentaires (`TITRAVEN`, `COMMAVEN`)
-- L'avenant génère une **quittance de souscription** dans la table `QUITTANCE` :
-  - Type de quittance (`CODTYPQU`)
-  - Prime nette (`PRIMNETT`), taxes, accessoires, commissions, timbres
-  - Numéro de pièce comptable (`NUMEPIEC`)
-- Génération du numéro de quittance via `NUMERO_QUITTANCE`.
-- Impression de l'**attestation de risque** (`ATTESTATION_RISQUE`) si applicable (automobile).
-
----
-
-## 5. Phase 4 — Validation et Émission
-
-### 5.1 Contrôle et validation
-- Vérification de l'habilitation utilisateur (`HABILITATION`, `ROLES_UTILISATEUR`, `Assur_ROLES`).
-- Vérification du verrouillage (`VERROUILLAGE_POLICE`).
-- Contrôle des caractéristiques obligatoires (`POLICE_CARACT`, `CARACTERISTIQUE`).
-- Date de validation renseignée (`DATEVALI`) sur la police et l'avenant.
-
-### 5.2 Enregistrement au registre
-- Numéro attribué au registre de production (`NUMERO_REGISTRE_PRODUCTION`) selon la catégorie.
-- Mise à jour du flag de sortie de la quittance (`SORTQUIT`, `DATSORQU`).
-
-### 5.3 Émission des documents
-- Génération du **contrat** via le modèle `MODELE_CONTRAT`.
-- Émission de la **quittance** et de l'**avis d'échéance** (`AVIS_ECHEANCE`).
-- Impression de l'attestation risque si la catégorie l'exige (`FLAG__PV` dans `CATEGORIE`).
-
----
-
-## 6. Phase 5 — Encaissement de la Prime
-
-- Saisie de l'encaissement dans `ENCAISSEMENT_QUITTANCE` :
-  - Mode de paiement (`MODEPAIE`) : chèque, virement, espèces
-  - Montant encaissé (`MONTENCA`), date d'encaissement (`DATEENCA`)
-  - Référence de l'encaissement (`REFEENCA`)
-  - Lien vers le bordereau d'opérations bancaires (`BORDEREAU_OPER_BANCAIRE`)
-- Rapprochement bancaire via `RAPPROCHEMENT_BANCAIRE`, `DETAIL_RAPPROCHEMENT_BANCAIRE`.
-- Génération des **mouvements comptables** dans `MOUVEMENT_COMPTABLE`, `JOURNAL_COMPTABLE`, `JOURNAL_TERME` selon les schémas `SCHEMA_COMPTABLE_PRODUCTION`.
-- Intégration comptable via `ENVOI_COMPTABILITE`, `DETAIL_ENVOI_COMPTABILITE`.
-
----
-
-## 7. Phase 6 — Gestion de la Vie du Contrat (Avenants)
-> CHUNK_ID: PROCESSUS::ARCHIVAGE
-
-Tout événement modificatif génère un nouvel avenant dans `AVENANT` :
-
-| Type d'opération | Nature avenant (`NATUAVEN`) | Exemples |
-|---|---|---|
-| Modification | M | Changement de garanties, de véhicule, d'assuré |
-| Renouvellement | R | Reconduction annuelle (`TYPE_AVENANT` avec `COTYAVRE` dans `CATEGORIE`) |
-| Résiliation | S | Fin de contrat (`AGENCEMENT_SORT`, `TYPE_SORT`) |
-| Adjonction | A | Ajout d'un risque, d'une garantie |
-| Suspension | — | Suspension temporaire de garanties |
-
-- Chaque avenant génère une nouvelle quittance (régularisation, ristourne, ou complément de prime).
-- Historique des quittances conservé dans `HISTO_QUITTANCE` et `HISTO_ENCAISSE_QUITTANCE`.
-- Images des états intermédiaires stockées dans `IMAGE_POLICE`, `IMAGE_RISQUE`, `IMAGE_GROUPE`, `IMAGE_GARANTIE_ACCORDEE`.
-
----
-
-## 8. Phase 7 — Gestion des Sinistres
-
-### 8.1 Déclaration du sinistre
-- Création dans la table `SINISTRE` :
-  - Exercice sinistre (`EXERSINI`), numéro sinistre (`NUMESINI`)
-  - Date de survenance (`DATESURV`), date de déclaration (`DATEDECL`)
-  - Nature sinistre (`NATUSINI`), cause (`CODCAUSI`), taux de responsabilité (`TAUXRESP`)
-  - Police et risque concernés (`NUMEPOLI`, `CODERISQ`)
-- Numéro attribué au registre sinistre (`REGISTRE_SINISTRE`, `NUMERO_REGISTRE_SINISTRE`).
-- Enregistrement des éléments complémentaires : `SINISTRE_CAUSE`, `SINISTRE_RISQUE`, `SINISTRE_PV`.
-
-### 8.2 Instruction et évaluation
-- Enregistrement des ayants droit (`AYANT_DROIT_SINISTRE`) et bénéficiaires (`BENEFICIAIRE_SINISTRE`, `BENEFICIAIRE_TIERS`).
-- Évaluation du sinistre dans `EVALUATION_SINISTRE`, `EVALUATION_GENERALE`.
-- Constitution des provisions dans `PROVISION_SINISTRE`.
-- Calcul des prestations via `PRESTATION`, `PRESTATION_RUBRIQUE`, `CALCUL_RUBRIQUE_SINISTRE_AUTO`.
-- Gestion des garanties accordées sur sinistre (`DETAIL_GARANTIE_ACCORDEE`, `GARANTIE_ACCORDEE`).
-- Suivi des événements (`EVENEMENT_SINISTRE`, `EVENEMENT_GARANTI_SINISTRE`).
-
-### 8.3 Règlement du sinistre
-- Création du règlement dans `REGLEMENT` :
-  - Type de règlement (`CODTYPRE`), mode de paiement (`MODEPAIE`)
-  - Montant réglé (`MONTREGL`), bénéficiaire (`NOM_BENE`)
-  - Numéro de chèque ou virement, banque
-  - Visa de règlement (`NUMEVISA`)
-- Vérification du `POUVOIR_REGLEMENT` de l'utilisateur.
-- Détail des rubriques de règlement dans `RUBRIQUE_REGLEMENT`, `DETAIL_SINISTRE_REGLE`.
-- Clôture du sinistre via `SORT_SINISTRE` (type de sortie : `CODTYPSO`, date : `DATSORSI`).
-- Génération des mouvements comptables selon `SCHEMA_COMPTABLE_REGLEMENT`, `SCHEMA_COMPTABLE_SINISTRE`.
-- Liaison possible avec une instance judiciaire (`INSTANCE_JUDICIAIRE`, `CONVENTION_SINISTRE`).
-
----
-
-## 9. Phase 8 — Clôture et Arrêtés Comptables
-
-- Arrêté périodique par agence dans `ARRETE_AGENCE` et `ARRETE_COMPTABLE`.
-- Clôture de l'exercice dans `ARRETE_COMPTABLE` (`CLOTEXER`).
-- Génération de la **balance comptable** (`BALANCE_COMPTABLE`, `BALANCE_COMPTABLE_PLUS`).
-- Édition des tableaux comptables (`TABLEAU_COMPTABLE`, `CELLULE_TABLEAU_COMPTABLE`, `DATA_TABLEAU_COMPTABLE`).
-- Production des créances assurés (`CREANCE_ASSURE`, `GENERATION_CREANCE`, `DETAIL_GENERATION_CREANCE`).
-- Soldage comptable via `SOLDAGE_COMPTABLE`.
-
----
-
-## 10. Schéma de Flux Global
-
-```
-Prospect / Assuré
-       │
-       ▼
-[1] SAISIE ASSURE ──────────────────── ASSURE / ASSURE_BIS / KYC
-       │
-       ▼
-[2] CRÉATION POLICE ─────────────────── POLICE + REGISTRE_PRODUCTION
-       │
-       ▼
-[3] RISQUES & GARANTIES ─────────────── RISQUE / GARANTIE_ACCORDEE / GROUPE
-       │
-       ▼
-[4] CALCUL DE PRIME ─────────────────── TARIF / RUBRIQUE / TAXE / COMMISSION
-       │
-       ▼
-[5] AVENANT 0 — SOUSCRIPTION ────────── AVENANT / QUITTANCE
-       │
-       ▼
-[6] VALIDATION & ÉMISSION ───────────── HABILITATION / ATTESTATION_RISQUE
-       │
-       ▼
-[7] ENCAISSEMENT ────────────────────── ENCAISSEMENT_QUITTANCE / BORDEREAU
-       │
-       ▼
-[8] COMPTABILISATION ────────────────── MOUVEMENT_COMPTABLE / JOURNAL
-       │
-    ┌──┴──────────────────────────┐
-    │                             │
-    ▼                             ▼
-[9] VIE DU CONTRAT           [10] SINISTRE
-  Avenants successifs           Déclaration → Instruction
-  AVENANT / QUITTANCE           SINISTRE → EVALUATION
-  Renouvellement / Résiliation  → REGLEMENT → SORT_SINISTRE
-    │                             │
-    └──────────┬──────────────────┘
-               ▼
-          [11] ARRÊTÉS & CLÔTURE
-          ARRETE_COMPTABLE / BALANCE_COMPTABLE
-```
-
----
-
-## 11. Tables Clés — Référentiel Rapide
-
-| Domaine | Tables principales |
-|---|---|
-| **Contrat** | `POLICE`, `AVENANT`, `TYPE_AVENANT`, `MODELE_CONTRAT` |
-| **Risque** | `RISQUE`, `RISQUE_CARACT`, `DETAIL_RISQUE_AUTO` |
-| **Garantie** | `GARANTIE`, `GARANTIE_ACCORDEE`, `GROUPE`, `GROUPE_GARANTIE` |
-| **Tarification** | `TARIF`, `RUBRIQUE`, `TAXE`, `COMMISSION`, `BONUS_MALUS` |
-| **Production** | `QUITTANCE`, `ENCAISSEMENT_QUITTANCE`, `REGISTRE_PRODUCTION` |
-| **Sinistre** | `SINISTRE`, `EVALUATION_SINISTRE`, `REGLEMENT`, `SORT_SINISTRE` |
-| **Comptabilité** | `MOUVEMENT_COMPTABLE`, `JOURNAL_COMPTABLE`, `BALANCE_COMPTABLE` |
-| **Acteurs** | `ASSURE`, `INTERMEDIAIRE`, `APPORTEUR`, `COASSURANCE` |
-| **Paramétrage** | `BRANCHE`, `CATEGORIE`, `CARACTERISTIQUE`, `HABILITATION` |
-
----
-
-*Document généré à partir de l'analyse du schéma Oracle v5 (`base_v5.dmp`) — Mai 2026*
-
-
----
-
-# PARTIE B — Guide de Vente et Objections Commerciales
-
-## Réponses aux objections fréquentes
+## Objections fréquentes — comment je réponds
 
 ### "C'est trop cher"
-Proposer une garantie inférieure :
-- Tous Risques → RC+Vol : économie de 30 à 40% / an
-- RC+Vol → RC seule : économie supplémentaire, couverture minimale légale
-Rappeler que la prime se paie mensuellement : ramener au montant mensuel.
+Je ne me justifie pas. Je propose une formule inférieure :
+"On peut faire RC + Vol seulement, tu économises 30 à 40%. Tu veux qu'on voie ça ?"
+Et je ramène toujours au mensuel : "3 750 DA par mois, c'est moins qu'un plein d'essence."
 
-### "J'ai vu moins cher ailleurs (CAAT, SAA, Trésor, MAATEC...)"
-Ne pas dénigrer la concurrence. Valoriser :
-- Les plafonds d'indemnisation
-- Les délais de remboursement
-- La qualité du réseau d'agences
-- La réactivité en cas de sinistre
+### "J'ai vu moins cher ailleurs"
+Je ne dénigre pas les concurrents. Je dis :
+"C'est possible. Ce qui compte c'est aussi la rapidité d'indemnisation et la qualité du service en cas de sinistre. Mais si tu veux, montre-moi leur offre et on compare."
 
-### "J'ai eu un accident l'année dernière"
-Rassurer : c'est le rôle de l'assurance.
-Le CRM (coefficient malus) est pris en compte dans le calcul.
-Un sinistre responsable = +25% de prime environ.
-Après 2 ans sans sinistre, retour au taux de base.
+### "J'ai eu un accident l'an dernier"
+Je rassure : "C'est exactement pour ça qu'on a l'assurance ! Le malus c'est +25% environ, mais après 2 ans sans sinistre tu retrouves ton taux de base."
 
 ### "Je veux juste un prix rapide"
-Aller directement aux 3 questions clés : wilaya, puissance CV, valeur vénale.
-Donner une fourchette RC / TR immédiatement.
+Je vais à l'essentiel : "Dis-moi ta wilaya, la puissance de ton véhicule et sa valeur — j'ai ta fourchette en 30 secondes."
 
-## Remises disponibles (une seule au choix)
-- Pack multi-produit (auto + habitation + autre) : réduction combinée
-- Formule Tous Risques complète : tarif préférentiel sur certaines garanties
-- Paiement annuel (chèque / TPE / virement) : évite les frais de fractionnement
+---
 
-## Clôture commerciale
-Quand le client dit "je veux souscrire" :
-→ Féliciter chaleureusement
-→ Inviter en agence pour le contrat définitif
-→ Rappeler les documents nécessaires : carte grise, permis, CIN, photos véhicule
-→ Préciser que le devis est une estimation — la prime définitive est établie en agence
+## Devis Risques Divers
 
-## Véhicules non-assurables par AssurDevis
-Avion, hélicoptère, bateau, train, vélo, trottinette, animaux.
-Réponse : "Notre spécialité c'est l'assurance automobile. Pour [véhicule], 
-il faudra voir une compagnie spécialisée."
+### MRH (Maison)
+Questions clés : type de logement (villa/appart/étage), superficie, wilaya, valeur estimée du contenu.
+Taux indicatif : 1,2‰ de la valeur par an.
+Je précise toujours que la CAT-NAT est incluse automatiquement.
+
+### RC Pro
+Questions clés : profession, chiffre d'affaires annuel, nombre d'employés.
+Je rappelle que c'est obligatoire pour certains métiers (médecins, avocats, architectes, ingénieurs).
+
+### Décennale
+Pour les entrepreneurs BTP uniquement.
+Questions clés : montant des travaux, type de construction, durée du chantier.
+
+---
+
+## Clôture : quand le client veut souscrire
+
+Je félicite chaleureusement.
+Je lui rappelle ce dont il a besoin pour aller en agence :
+- Carte grise
+- Permis de conduire
+- CIN (carte d'identité nationale)
+- Photos du véhicule (si récent)
+
+Je précise que le devis est une estimation — la prime définitive est établie par l'agence après vérification des documents.
+
+---
+
+## Orientation vers une agence
+
+Si le client demande où aller, je lui demande sa wilaya et je l'oriente vers les agences connues dans sa région. Je ne recommande pas une compagnie en particulier — AssurDevis est indépendant.
+
+---
+
+## Ce qu'AssurDevis NE fait PAS
+
+- On ne souscrit pas directement en ligne (pas encore)
+- On ne gère pas les sinistres — on oriente vers la compagnie
+- On n'assure pas : avions, bateaux, trains, vélos, animaux
