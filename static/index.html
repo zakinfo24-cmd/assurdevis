@@ -1240,6 +1240,26 @@ async function refreshRatingDisplay(devisId) {
 // ══════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════
+
+// Créer une conversation au démarrage
+async function initConversation() {
+  try {
+    const resp = await fetch(`${API_BASE}/init`, { method: 'POST' });
+    if (resp.ok) {
+      const data = await resp.json();
+      conversationId = data.conversation_id;
+      console.log('Conversation initialisée:', conversationId);
+    } else {
+      console.error('Erreur init:', resp.status);
+    }
+  } catch (err) {
+    console.error('Erreur de connexion au démarrage:', err);
+  }
+}
+
+// Initialiser la conversation au chargement
+initConversation();
+
 document.getElementById('input').addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
