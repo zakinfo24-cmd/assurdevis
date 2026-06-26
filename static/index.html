@@ -647,39 +647,7 @@ function removeTyping() {
 // ══════════════════════════════════════════════
 //  VOIX — TTS
 // ══════════════════════════════════════════════
-let currentUtterance = null;
-let cachedVoices = [];
-
-// Charger et mettre en cache les voix dès que disponibles
-function loadVoices() {
-  cachedVoices = window.speechSynthesis.getVoices();
-}
-if (window.speechSynthesis) {
-  loadVoices();
-  window.speechSynthesis.onvoiceschanged = loadVoices;
-}
-
-// Détecter la langue dominante du texte
-function detectLang(text) {
-  // Plage Unicode arabe : \u0600-\u06FF
-  const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
-  const totalChars  = text.replace(/\s/g, '').length;
-  if (totalChars === 0) return 'fr';
-  return (arabicChars / totalChars) > 0.25 ? 'ar' : 'fr';
-}
-
-// Choisir la meilleure voix pour la langue détectée
-function pickVoice(lang) {
-  if (lang === 'ar') {
-    // Chercher voix arabe (ar-SA, ar-DZ, ar-EG…)
-    return cachedVoices.find(v => v.lang.startsWith('ar'))
-        || cachedVoices.find(v => v.lang.startsWith('fr'))
-        || null;
-  }
-  return cachedVoices.find(v => v.lang.startsWith('fr'))
-      || cachedVoices.find(v => v.lang.startsWith('en'))
-      || null;
-}
+let currentAudio = null;
 
 function cleanForSpeech(text, lang) {
   let t = text.replace(/[#*_\[\](){}→]/g, '');
@@ -687,36 +655,67 @@ function cleanForSpeech(text, lang) {
     t = t.replace(/\bDA\b/g, 'dinars algériens')
          .replace(/\bCV\b/g, 'chevaux')
          .replace(/\bRC\b/g, 'responsabilité civile')
-         .replace(/\bTTC\b/g, 'toutes taxes comprises');
+         .replace(/\bTTC\b/g, 'toutes taxes comprises')
+         .replace(/\bdgts\b/gi, 'dégâts')
+         .replace(/\bpeu[t-]?ê?tre\b/gi, 'peut-être');
   }
   return t.trim();
 }
 
-function speakText(text, btn) {
-  if (!window.speechSynthesis) return;
-  // Toggle OFF si déjà en cours
-  if (window.speechSynthesis.speaking) {
-    window.speechSynthesis.cancel();
+function detectLang(text) {
+  const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
+  const totalChars  = text.replace(/\s/g, '').length;
+  if (totalChars === 0) return 'fr';
+  return (arabicChars / totalChars) > 0.25 ? 'ar' : 'fr';
+}
+
+async function speakText(text, btn) {
+  // Toggle OFF si audio en cours
+  if (currentAudio && !currentAudio.paused) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
     if (btn) btn.classList.remove('speaking');
-    currentUtterance = null;
     return;
   }
-  const lang  = detectLang(text);
+
+  const lang = detectLang(text);
   const clean = cleanForSpeech(text, lang);
   if (!clean) return;
 
-  const u   = new SpeechSynthesisUtterance(clean);
-  u.lang    = lang === 'ar' ? 'ar-SA' : 'fr-FR';
-  u.rate    = lang === 'ar' ? 0.90 : 0.95;
-  u.pitch   = 1;
-  const voice = pickVoice(lang);
-  if (voice) u.voice = voice;
-
-  u.onend  = () => { if (btn) btn.classList.remove('speaking'); currentUtterance = null; };
-  u.onerror= () => { if (btn) btn.classList.remove('speaking'); currentUtterance = null; };
   if (btn) btn.classList.add('speaking');
-  currentUtterance = u;
-  window.speechSynthesis.speak(u);
+
+  try {
+    const resp = await fetch(`${API_BASE}/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: clean, conversation_id: '' })
+    });
+
+    if (!resp.ok) {
+      console.error('TTS error:', resp.status);
+      if (btn) btn.classList.remove('speaking');
+      return;
+    }
+
+    const data = await resp.json();
+    if (!data.audio) {
+      if (btn) btn.classList.remove('speaking');
+      return;
+    }
+
+    // Créer et jouer l'audio
+    currentAudio = new Audio(data.audio);
+    currentAudio.onended = () => {
+      if (btn) btn.classList.remove('speaking');
+    };
+    currentAudio.onerror = () => {
+      if (btn) btn.classList.remove('speaking');
+    };
+    await currentAudio.play();
+  } catch (err) {
+    console.error('TTS error:', err);
+    if (btn) btn.classList.remove('speaking');
+  }
 }
 
 // ══════════════════════════════════════════════
