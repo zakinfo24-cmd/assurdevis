@@ -144,6 +144,11 @@ async def _export_loop():
 @app.on_event("startup")
 async def _startup():
     global _REFERENCE_TEXT
+    # Force UTF-8 encoding pour les accents
+    import sys
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+    
     try:
         _REFERENCE_TEXT = load_reference()
     except Exception:
