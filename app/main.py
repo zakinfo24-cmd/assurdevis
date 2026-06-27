@@ -398,11 +398,26 @@ def extract_auto_fields_from_history(history: list) -> dict:
         if any(w in recent_user for w in ['vol', 'incendie', 'viv']):
             garanties.append('VIV')
         if 'collision' in recent_user or 'dc' in recent_user:
-            # DC avec montant custom
-            m_dc = re.search(r'collision[^0-9]*(\d+)', recent_user)
-            if m_dc:
-                fields['dc_montant'] = int(m_dc.group(1))
-                fields['dc_franchise'] = 50000
+            # Extraire la franchise DC si mentionnée
+            m_fr = re.search(r'(\d[\d\s]*)\s*da', recent_user)
+            franchise = 50000  # franchise par défaut
+            if m_fr:
+                val = int(re.sub(r'\s', '', m_fr.group(1)))
+                if 10000 <= val <= 500000:
+                    franchise = val
+            # Calculer la prime DC selon la franchise (taux dégressif)
+            valeur = fields.get('valeur', 0)
+            if valeur > 0:
+                if franchise >= 200000:
+                    taux_dc = 0.02
+                elif franchise >= 100000:
+                    taux_dc = 0.025
+                elif franchise >= 50000:
+                    taux_dc = 0.03
+                else:
+                    taux_dc = 0.035
+                fields['dc_montant'] = round(valeur * taux_dc)
+                fields['dc_franchise'] = franchise
         if 'bris de glace' in recent_user or 'bdg' in recent_user:
             garanties.append('BDG')
     fields['garanties'] = garanties
@@ -513,8 +528,15 @@ async def chat(req: ChatRequest):
 
     # Auto-calcul devis si intent QUOTE_AUTO et champs suffisants
     devis_result = None
-    already_calculated = conv.get("devis_calculated", False)
-    if intent == "QUOTE_AUTO" and not already_calculated:
+    # Recalculer si le dernier message contient de nouvelles infos clés
+    last_msg = req.message.lower()
+    has_new_info = any(w in last_msg for w in [
+        'da', 'cv', 'valeur', 'collision', 'vol', 'incendie', 'bdg', 'viv',
+        'tous risques', 'omnium', 'usage', 'personnel', 'professionnel',
+        'wilaya', 'alger', 'oran', 'annaba', 'tizi', 'constantine', 'adrar',
+        'reduction', 'réduction', '%', 'mois', 'garantie'
+    ])
+    if intent == "QUOTE_AUTO" and has_new_info:
         fields = extract_auto_fields_from_history(conv["history"])
         logging.getLogger(__name__).info("QUOTE_AUTO fields: %s", fields)
         if fields.get('valeur') and fields.get('puissance') and fields.get('usage'):
