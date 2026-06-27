@@ -343,14 +343,19 @@ async def init_conversation():
 def extract_auto_fields_from_history(history: list) -> dict:
     """Extrait les champs du devis auto depuis l'historique de conversation."""
     fields = {}
+    # Historique complet pour valeur/CV/usage/wilaya
     full_text = " ".join(m["content"] for m in history).lower()
+    # Dernier message utilisateur pour les garanties
+    user_msgs = [m["content"].lower() for m in history if m["role"] == "user"]
+    last_user = user_msgs[-1] if user_msgs else ""
+    recent_user = " ".join(user_msgs[-3:]) if user_msgs else ""
 
     # Valeur vénale
-    for pattern in [r'(\d[\d\s]*)\s*da', r'valeur[^:]*[:=\s]+(\d[\d\s]+)', r'(\d{6,})\s']:
+    for pattern in [r'(\d[\d\s]{4,})\s*da', r'valeur[^:]*[:=\s]+(\d[\d\s]+)', r'(\d{6,})']:
         m = re.search(pattern, full_text)
         if m:
             v = int(re.sub(r'\s', '', m.group(1)))
-            if v >= 100000:
+            if 100000 <= v <= 50000000:
                 fields['valeur'] = v
                 break
 
@@ -362,12 +367,13 @@ def extract_auto_fields_from_history(history: list) -> dict:
     # Usage
     if 'professionnel' in full_text:
         fields['usage'] = 'professionnel'
-    elif 'personnel' in full_text or 'perso' in full_text:
+    else:
         fields['usage'] = 'personnel'
 
     # Zone / Wilaya
-    WILAYAS_Z2 = ['alger', 'oran', 'constantine', 'annaba', 'sétif', 'batna',
-                  'blida', 'sidi bel', 'tlemcen', 'béjaïa', 'tizi ouzou', 'biskra']
+    WILAYAS_Z2 = ['alger', 'oran', 'constantine', 'annaba', 'setif', 'batna',
+                  'blida', 'sidi bel', 'tlemcen', 'bejaia', 'tizi ouzou', 'biskra',
+                  'boumerdes', 'tipaza', 'medea', 'chlef']
     zone = 1
     for w in WILAYAS_Z2:
         if w in full_text:
@@ -375,23 +381,30 @@ def extract_auto_fields_from_history(history: list) -> dict:
             break
     fields['zone'] = zone
 
-    # Réduction
-    m = re.search(r'r[ée]duction[^:]*[:=\s]+(\d+)\s*%|(\d+)\s*%[^%]*r[ée]duction', full_text)
+    # Réduction — chercher dans tout l'historique
+    m = re.search(r'r[ée]duction[^0-9]*(\d+)\s*%|(\d+)\s*%[^%\n]*r[ée]duction', full_text)
     if m:
         fields['reduction'] = float(m.group(1) or m.group(2))
-    elif 'convention' in full_text or '50%' in full_text or '50 %' in full_text:
-        m2 = re.search(r'(\d+)\s*%', full_text)
-        if m2:
-            fields['reduction'] = float(m2.group(1))
+    elif '50%' in full_text or '50 %' in full_text:
+        fields['reduction'] = 50.0
 
-    # Garanties
+    # Garanties — depuis les 3 derniers messages utilisateur uniquement
     garanties = ['RC']
-    if any(w in full_text for w in ['tous risques', 'omnium', 'topr']):
+    if any(w in recent_user for w in ['tous risques', 'omnium', 'topr']):
         garanties = ['RC', 'TOPR', 'VIV', 'BDG']
-    elif any(w in full_text for w in ['demi tous risques', 'demi-tous', 'semi']):
+    elif any(w in recent_user for w in ['demi tous', 'demi-tous', 'semi']):
         garanties = ['RC', 'VIV', 'BDG']
-    elif any(w in full_text for w in ['vol', 'incendie', 'viv']):
-        garanties.append('VIV')
+    else:
+        if any(w in recent_user for w in ['vol', 'incendie', 'viv']):
+            garanties.append('VIV')
+        if 'collision' in recent_user or 'dc' in recent_user:
+            # DC avec montant custom
+            m_dc = re.search(r'collision[^0-9]*(\d+)', recent_user)
+            if m_dc:
+                fields['dc_montant'] = int(m_dc.group(1))
+                fields['dc_franchise'] = 50000
+        if 'bris de glace' in recent_user or 'bdg' in recent_user:
+            garanties.append('BDG')
     fields['garanties'] = garanties
 
     # Durée
@@ -500,15 +513,17 @@ async def chat(req: ChatRequest):
 
     # Auto-calcul devis si intent QUOTE_AUTO et champs suffisants
     devis_result = None
-    if intent == "QUOTE_AUTO":
+    already_calculated = conv.get("devis_calculated", False)
+    if intent == "QUOTE_AUTO" and not already_calculated:
         fields = extract_auto_fields_from_history(conv["history"])
         logging.getLogger(__name__).info("QUOTE_AUTO fields: %s", fields)
-        if fields.get('valeur') and fields.get('puissance'):
+        if fields.get('valeur') and fields.get('puissance') and fields.get('usage'):
             try:
                 devis_result = calc_auto(fields)
                 if devis_result:
                     devis_result['fields'] = fields
                     auto_save_devis(devis_result, conv_id)
+                    conv["devis_calculated"] = True
             except Exception as e:
                 logging.getLogger(__name__).error("calc_auto error: %s", e)
 
