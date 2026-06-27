@@ -388,39 +388,39 @@ def extract_auto_fields_from_history(history: list) -> dict:
     elif '50%' in full_text or '50 %' in full_text:
         fields['reduction'] = 50.0
 
-    # Garanties — depuis les 3 derniers messages utilisateur uniquement
+    # Garanties — accumulatives sur tout l'historique utilisateur
     garanties = ['RC']
-    if any(w in recent_user for w in ['tous risques', 'omnium', 'topr']):
+    # Chercher DC dans tout l'historique
+    if any(w in full_text for w in ['collision', ' dc ']):
+        m_fr = re.search(r'collision[^0-9]*(\d[\d\s]*)\s*da', full_text)
+        franchise = 50000
+        if m_fr:
+            val = int(re.sub(r'\s', '', m_fr.group(1)))
+            if 10000 <= val <= 500000:
+                franchise = val
+        valeur = fields.get('valeur', 0)
+        if valeur > 0:
+            if franchise >= 200000:
+                taux_dc = 0.02
+            elif franchise >= 100000:
+                taux_dc = 0.025
+            elif franchise >= 50000:
+                taux_dc = 0.03
+            else:
+                taux_dc = 0.035
+            fields['dc_montant'] = round(valeur * taux_dc)
+            fields['dc_franchise'] = franchise
+
+    if any(w in full_text for w in ['tous risques', 'omnium', 'topr']):
         garanties = ['RC', 'TOPR', 'VIV', 'BDG']
-    elif any(w in recent_user for w in ['demi tous', 'demi-tous', 'semi']):
+    elif any(w in full_text for w in ['demi tous', 'demi-tous', 'semi']):
         garanties = ['RC', 'VIV', 'BDG']
     else:
-        if any(w in recent_user for w in ['vol', 'incendie', 'viv']):
+        if any(w in full_text for w in ['vol', 'incendie', 'viv']):
             garanties.append('VIV')
-        if 'collision' in recent_user or 'dc' in recent_user:
-            # Extraire la franchise DC si mentionnée
-            m_fr = re.search(r'(\d[\d\s]*)\s*da', recent_user)
-            franchise = 50000  # franchise par défaut
-            if m_fr:
-                val = int(re.sub(r'\s', '', m_fr.group(1)))
-                if 10000 <= val <= 500000:
-                    franchise = val
-            # Calculer la prime DC selon la franchise (taux dégressif)
-            valeur = fields.get('valeur', 0)
-            if valeur > 0:
-                if franchise >= 200000:
-                    taux_dc = 0.02
-                elif franchise >= 100000:
-                    taux_dc = 0.025
-                elif franchise >= 50000:
-                    taux_dc = 0.03
-                else:
-                    taux_dc = 0.035
-                fields['dc_montant'] = round(valeur * taux_dc)
-                fields['dc_franchise'] = franchise
-        if 'bris de glace' in recent_user or 'bdg' in recent_user:
+        if 'bris de glace' in full_text or 'bdg' in full_text:
             garanties.append('BDG')
-    fields['garanties'] = garanties
+    fields['garanties'] = list(dict.fromkeys(garanties))  # dédoublonner
 
     # Durée
     m = re.search(r'(\d+)\s*mois', full_text)
