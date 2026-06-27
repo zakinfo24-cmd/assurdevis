@@ -938,6 +938,7 @@ async function sendMessage() {
 
   input.value = '';
   addMessage(msg, 'user');
+  pushHistory('user', msg);
 
   // Si en mode collecte auto, capturer la réponse comme valeur de champ
   if (isCollecting && collecteStep < AUTO_QUESTIONS.length) {
@@ -1015,12 +1016,16 @@ async function sendMessage() {
     conversationId = data.conversation_id || conversationId;
     const fullText = data.response || '';
 
+    // Historique pour extraction
+    pushHistory('bot', fullText);
+
     addMessage(fullText, 'bot');
 
     if (data.devis) {
       addDevisCard(data.devis);
-    } else if (data.intent === 'QUOTE_AUTO' && data.step === 'collecte') {
-      startAutoCollecte();
+    } else if (data.intent === 'QUOTE_AUTO') {
+      // Extraction intelligente depuis la conversation libre
+      setTimeout(() => tryExtractAndCompute(), 300);
     }
 
     const tiles = extractTilesFromText(fullText);
@@ -1087,6 +1092,127 @@ async function doDevisAuto() {
   } catch (err) {
     removeTyping();
     addMessage('Erreur lors du calcul du devis.', 'bot');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  EXTRACTION INTELLIGENTE — conversation libre → devis
+// ══════════════════════════════════════════════
+
+// Historique des messages pour extraction
+const msgHistory = [];
+
+function pushHistory(role, text) {
+  msgHistory.push({ role, text });
+  if (msgHistory.length > 30) msgHistory.shift();
+}
+
+function getFullConversation() {
+  return msgHistory.map(m => `${m.role === 'user' ? 'Client' : 'AssurDevis'}: ${m.text}`).join('\n');
+}
+
+function extractFieldsFromConversation() {
+  const conv = getFullConversation().toLowerCase();
+  const fields = {};
+
+  // Valeur véhicule
+  const valMatch = conv.match(/(\d[\d\s]*)\s*(da|dinars?|million)/i)
+    || conv.match(/valeur[^\d]*(\d[\d\s]{4,})/i)
+    || conv.match(/(\d{6,})/);
+  if (valMatch) {
+    let v = parseInt(valMatch[1].replace(/\s/g, ''));
+    if (conv.includes('million') && v < 100) v *= 1000000;
+    if (v >= 100000) fields.valeur = v;
+  }
+
+  // Puissance CV
+  const cvMatch = conv.match(/(\d+)\s*cv/i)
+    || conv.match(/(\d+)\s*chevaux/i)
+    || conv.match(/puissance[^\d]*(\d+)/i);
+  if (cvMatch) {
+    const cv = parseInt(cvMatch[1]);
+    if (cv >= 3 && cv <= 20) fields.puissance = cv;
+  }
+
+  // Usage
+  if (conv.includes('professionnel') || conv.includes('taxi') || conv.includes('livraison')) {
+    fields.usage = 'professionnel';
+  } else if (conv.includes('personnel') || conv.includes('perso')) {
+    fields.usage = 'personnel';
+  } else {
+    fields.usage = 'personnel'; // défaut
+  }
+
+  // Garanties
+  const garanties = ['RC'];
+  if (conv.includes('vol') || conv.includes('viv')) garanties.push('VIV');
+  if (conv.includes('collision') || conv.includes('dommage')) garanties.push('DC10');
+  if (conv.includes('tous risques') || conv.includes('omnium') || conv.includes('topr')) garanties.push('TOPR');
+  if (conv.includes('bris de glace') || conv.includes('bdg')) garanties.push('BDG');
+  if (conv.includes('assistance') || conv.includes('ast')) garanties.push('AST');
+  fields.garanties = garanties;
+
+  // DC montant (dommages collision)
+  const dcMatch = conv.match(/(?:dommage|collision)[^\d]*(\d[\d\s]*)/i)
+    || conv.match(/franchise[^\d]*(\d[\d\s]*)/i);
+  if (dcMatch && garanties.includes('DC10')) {
+    const dcVal = parseInt(dcMatch[1].replace(/\s/g, ''));
+    if (dcVal >= 5000) fields.dc_montant = dcVal;
+  }
+
+  // Durée
+  const dureeMatch = conv.match(/(\d+)\s*mois/i);
+  if (dureeMatch) {
+    const d = parseInt(dureeMatch[1]);
+    if ([1,3,6,9,12].includes(d)) fields.duree_mois = d;
+  } else {
+    fields.duree_mois = 12; // défaut annuel
+  }
+
+  // Genre véhicule (par défaut voiture particulière)
+  fields.genre = '00';
+
+  // Zone wilaya
+  const grandesVilles = ['alger', 'oran', 'constantine', 'annaba', 'blida', 'tizi', 'sétif', 'setif', 'batna', 'sidi bel', 'béjaïa', 'bejaia'];
+  const zoneMatch = grandesVilles.some(v => conv.includes(v));
+  fields.zone = zoneMatch ? 1 : 2;
+
+  // Permis récent
+  const anneeMatch = conv.match(/permis[^\d]*(\d{4})/i);
+  if (anneeMatch) {
+    const anneePermis = parseInt(anneeMatch[1]);
+    const age = new Date().getFullYear() - anneePermis;
+    if (age <= 2) fields.permis_recent = 'oui';
+  }
+
+  return fields;
+}
+
+function hasEnoughFields(fields) {
+  return fields.valeur && fields.puissance && fields.garanties;
+}
+
+async function tryExtractAndCompute() {
+  const fields = extractFieldsFromConversation();
+  if (!hasEnoughFields(fields)) return; // pas assez d'infos, continuer la conversation
+
+  // Vérifier si on a déjà affiché un devis avec ces mêmes données
+  const key = `${fields.valeur}_${fields.puissance}_${fields.garanties.join('')}`;
+  if (window._lastDevisKey === key) return;
+  window._lastDevisKey = key;
+
+  addTyping();
+  try {
+    const result = await callDevis(fields);
+    removeTyping();
+    if (result.devis) {
+      result.devis.fields = fields;
+      addDevisCard(result.devis);
+      speakText("Voici votre devis AssurDevis !", null);
+    }
+  } catch(err) {
+    removeTyping();
+    console.error('Devis extract error:', err);
   }
 }
 
