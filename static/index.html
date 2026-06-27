@@ -645,9 +645,9 @@ function removeTyping() {
 }
 
 // ══════════════════════════════════════════════
-//  VOIX — TTS
+//  VOIX — Web Speech API (navigateur, zéro serveur, zéro quota)
 // ══════════════════════════════════════════════
-let currentAudio = null;
+let currentUtterance = null;
 
 function cleanForSpeech(text, lang) {
   let t = text.replace(/[#*_\[\](){}→]/g, '');
@@ -656,8 +656,7 @@ function cleanForSpeech(text, lang) {
          .replace(/\bCV\b/g, 'chevaux')
          .replace(/\bRC\b/g, 'responsabilité civile')
          .replace(/\bTTC\b/g, 'toutes taxes comprises')
-         .replace(/\bdgts\b/gi, 'dégâts')
-         .replace(/\bpeu[t-]?ê?tre\b/gi, 'peut-être');
+         .replace(/\bdgts\b/gi, 'dégâts');
   }
   return t.trim();
 }
@@ -669,53 +668,53 @@ function detectLang(text) {
   return (arabicChars / totalChars) > 0.25 ? 'ar' : 'fr';
 }
 
-async function speakText(text, btn) {
-  // Toggle OFF si audio en cours
-  if (currentAudio && !currentAudio.paused) {
-    currentAudio.pause();
-    currentAudio.currentTime = 0;
+function getBestVoice(lang) {
+  const voices = window.speechSynthesis.getVoices();
+  if (lang === 'ar') {
+    return voices.find(v => v.lang.startsWith('ar')) || null;
+  }
+  // Priorité : voix française, puis fr-FR, puis fr-BE, puis n'importe quelle fr
+  return voices.find(v => v.lang === 'fr-FR')
+      || voices.find(v => v.lang.startsWith('fr'))
+      || null;
+}
+
+function speakText(text, btn) {
+  // Toggle OFF si déjà en train de parler
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
     if (btn) btn.classList.remove('speaking');
     return;
   }
 
-  const lang = detectLang(text);
+  const lang  = detectLang(text);
   const clean = cleanForSpeech(text, lang);
   if (!clean) return;
 
   if (btn) btn.classList.add('speaking');
 
-  try {
-    const resp = await fetch(`${API_BASE}/tts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: clean, conversation_id: '' })
-    });
+  const utter = new SpeechSynthesisUtterance(clean);
+  utter.lang  = lang === 'ar' ? 'ar-SA' : 'fr-FR';
+  utter.rate  = 0.95;
+  utter.pitch = 1.05;
 
-    if (!resp.ok) {
-      console.error('TTS error:', resp.status);
-      if (btn) btn.classList.remove('speaking');
-      return;
-    }
+  // Attendre que les voix soient chargées puis assigner
+  const assignVoice = () => {
+    const voice = getBestVoice(lang);
+    if (voice) utter.voice = voice;
+  };
 
-    const data = await resp.json();
-    if (!data.audio) {
-      if (btn) btn.classList.remove('speaking');
-      return;
-    }
-
-    // Créer et jouer l'audio
-    currentAudio = new Audio(data.audio);
-    currentAudio.onended = () => {
-      if (btn) btn.classList.remove('speaking');
-    };
-    currentAudio.onerror = () => {
-      if (btn) btn.classList.remove('speaking');
-    };
-    await currentAudio.play();
-  } catch (err) {
-    console.error('TTS error:', err);
-    if (btn) btn.classList.remove('speaking');
+  if (window.speechSynthesis.getVoices().length > 0) {
+    assignVoice();
+  } else {
+    window.speechSynthesis.onvoiceschanged = assignVoice;
   }
+
+  utter.onend   = () => { if (btn) btn.classList.remove('speaking'); };
+  utter.onerror = () => { if (btn) btn.classList.remove('speaking'); };
+
+  currentUtterance = utter;
+  window.speechSynthesis.speak(utter);
 }
 
 // ══════════════════════════════════════════════
