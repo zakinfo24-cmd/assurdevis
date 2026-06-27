@@ -178,50 +178,51 @@ class ChatRequest(BaseModel):
     conversation_id: str = ""
 
 
-# ── Edge TTS (Microsoft) — gratuit, zéro quota ──────────────────────────────
-# Voix disponibles : fr-FR-DeniseNeural (FR), ar-DZ-AminaNeural (AR algérien)
-EDGE_TTS_VOICE_FR = "fr-FR-DeniseNeural"
-EDGE_TTS_VOICE_AR = "ar-SA-ZariyahNeural"
-
-def detect_language(text: str) -> str:
-    """Détecte si le texte est en arabe ou français."""
-    arabic_chars = sum(1 for c in text if '\u0600' <= c <= '\u06FF')
-    return "ar" if arabic_chars > len(text) * 0.3 else "fr"
+# ── OpenAI TTS ─────────────────────────────────────────────────────────────
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_TTS_VOICE = os.getenv("OPENAI_TTS_VOICE", "nova")  # nova = voix féminine naturelle
 
 @app.post("/tts")
 async def text_to_speech(req: ChatRequest):
-    """Convertir le texte en audio via Edge TTS — gratuit, multilingue FR/AR."""
-    import edge_tts, tempfile, base64 as b64
+    """Convertir le texte en audio via OpenAI TTS — voix naturelle multilingue."""
+    if not OPENAI_API_KEY:
+        raise HTTPException(503, "TTS non configuré (OPENAI_API_KEY manquante)")
 
     text = req.message.strip()[:4096]
     if not text:
         raise HTTPException(400, "Texte vide")
 
-    # Choisir la voix selon la langue détectée
-    lang = detect_language(text)
-    voice = EDGE_TTS_VOICE_AR if lang == "ar" else EDGE_TTS_VOICE_FR
+    payload = {
+        "model": "tts-1",
+        "input": text,
+        "voice": OPENAI_TTS_VOICE,
+        "response_format": "mp3",
+    }
 
     try:
-        # Générer l'audio dans un fichier temporaire
-        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-            tmp_path = tmp.name
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                "https://api.openai.com/v1/audio/speech",
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+            if resp.status_code != 200:
+                logging.getLogger(__name__).error("OpenAI TTS %d: %s", resp.status_code, resp.text[:300])
+                raise HTTPException(resp.status_code, f"OpenAI TTS erreur {resp.status_code}")
 
-        communicate = edge_tts.Communicate(text, voice)
-        await communicate.save(tmp_path)
+            audio_base64 = base64.b64encode(resp.content).decode("utf-8")
+            return {"audio": f"data:audio/mpeg;base64,{audio_base64}", "success": True}
 
-        # Lire et encoder en base64
-        with open(tmp_path, "rb") as f:
-            audio_bytes = f.read()
-
-        import os as _os
-        _os.unlink(tmp_path)  # Nettoyer le fichier temporaire
-
-        audio_base64 = b64.b64encode(audio_bytes).decode("utf-8")
-        return {"audio": f"data:audio/mpeg;base64,{audio_base64}", "success": True, "voice": voice}
-
+    except httpx.TimeoutException:
+        raise HTTPException(504, "OpenAI TTS timeout")
+    except HTTPException:
+        raise
     except Exception as e:
-        logging.getLogger(__name__).error("Edge TTS error: %s", e)
-        raise HTTPException(500, f"TTS erreur : {str(e)}")
+        logging.getLogger(__name__).error("TTS error: %s", e)
+        raise HTTPException(500, str(e))
 
 async def check_groq() -> bool:
     """Vérifie que la clé Groq active est valide."""
@@ -261,12 +262,6 @@ async def query_groq(messages: list[dict]) -> str:
                 continue
             resp.raise_for_status()
             text = resp.json()["choices"][0]["message"]["content"]
-            # Réparer l'encoding UTF-8 si nécessaire
-            try:
-                # Si le texte a des caractères mal encodés (Ã© au lieu de é)
-                text = text.encode('latin-1').decode('utf-8', errors='ignore')
-            except (UnicodeDecodeError, UnicodeEncodeError):
-                pass  # Si ça fail, garder le texte original
             return text
 
     raise RuntimeError("Toutes les clés Groq sont épuisées")
