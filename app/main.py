@@ -413,15 +413,27 @@ async def chat(req: ChatRequest):
     if not conv:
         raise HTTPException(404, "Conversation not found")
 
-    # Détection d'intent simple
+    # Détection d'intent — message actuel + historique
     msg_lower = req.message.lower()
-    if any(w in msg_lower for w in ["devis auto", "assurance auto", "voiture"]):
+    history_text = " ".join(m["content"] for m in conv.get("history", [])).lower()
+    combined = msg_lower + " " + history_text
+
+    # Mots signalant une voiture
+    CAR_WORDS = ["voiture", "auto", "véhicule", "vehicule", "moto", "camion",
+                 "toyota", "honda", "renault", "peugeot", "volkswagen", "vw",
+                 "mercedes", "bmw", "hyundai", "kia", "dacia", "ford", "fiat",
+                 "civic", "golf", "clio", "logan", "sandero", "polo", "classe",
+                 "cv", "chevaux", "cylindr", "permis", "immatricul"]
+
+    if any(w in combined for w in ["devis auto", "assurance auto"] + CAR_WORDS):
         intent = "QUOTE_AUTO"
-    elif any(w in msg_lower for w in ["devis", "habitation", "maison", "pro", "rc", "décennale"]):
+    elif any(w in msg_lower for w in ["habitation", "maison", "appartement", "local", "usine",
+                                       "pro", "décennale", "decennale", "incendie", "transport",
+                                       "cyber", "recolte", "récolte"]):
         intent = "QUOTE_RD"
-    elif any(w in msg_lower for w in ["agence", "bureau", "où"]):
+    elif any(w in msg_lower for w in ["agence", "bureau", "adresse", "où trouver"]):
         intent = "ORIENTATION"
-    elif any(w in msg_lower for w in ["bonjour", "salut", "hello", "hi", "salam"]):
+    elif any(w in msg_lower for w in ["bonjour", "salut", "hello", "hi", "salam", "bonsoir"]):
         intent = "GREETING"
     else:
         intent = "QUESTION_INFO"
@@ -490,6 +502,7 @@ async def chat(req: ChatRequest):
     devis_result = None
     if intent == "QUOTE_AUTO":
         fields = extract_auto_fields_from_history(conv["history"])
+        logging.getLogger(__name__).info("QUOTE_AUTO fields: %s", fields)
         if fields.get('valeur') and fields.get('puissance'):
             try:
                 devis_result = calc_auto(fields)
