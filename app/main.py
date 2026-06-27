@@ -178,52 +178,46 @@ class ChatRequest(BaseModel):
     conversation_id: str = ""
 
 
-# ── ElevenLabs TTS ─────────────────────────────────────────────────────────
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
-ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "zAvB1CA77BKeZMAepR7x")  # Lucie
+# ── OpenAI TTS ─────────────────────────────────────────────────────────────
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_TTS_VOICE = os.getenv("OPENAI_TTS_VOICE", "nova")  # nova = voix féminine naturelle
 
 @app.post("/tts")
 async def text_to_speech(req: ChatRequest):
-    """Convertir le texte en audio via ElevenLabs — voix française naturelle."""
-    if not ELEVENLABS_API_KEY:
-        raise HTTPException(503, "TTS non configuré (ELEVENLABS_API_KEY manquante)")
+    """Convertir le texte en audio via OpenAI TTS — voix naturelle multilingue."""
+    if not OPENAI_API_KEY:
+        raise HTTPException(503, "TTS non configuré (OPENAI_API_KEY manquante)")
 
-    text = req.message.strip()[:1000]
+    text = req.message.strip()[:4096]
     if not text:
         raise HTTPException(400, "Texte vide")
 
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
     payload = {
-        "text": text,
-        "model_id": "eleven_multilingual_v2",
-        "voice_settings": {
-            "stability": 0.5,
-            "similarity_boost": 0.75,
-            "style": 0.3,
-            "use_speaker_boost": True,
-        },
+        "model": "tts-1",
+        "input": text,
+        "voice": OPENAI_TTS_VOICE,
+        "response_format": "mp3",
     }
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
-                url,
+                "https://api.openai.com/v1/audio/speech",
                 headers={
-                    "xi-api-key": ELEVENLABS_API_KEY,
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
                     "Content-Type": "application/json",
-                    "Accept": "audio/mpeg",
                 },
                 json=payload,
             )
             if resp.status_code != 200:
-                logging.getLogger(__name__).error("ElevenLabs %d: %s", resp.status_code, resp.text[:300])
-                raise HTTPException(resp.status_code, f"ElevenLabs erreur {resp.status_code}")
+                logging.getLogger(__name__).error("OpenAI TTS %d: %s", resp.status_code, resp.text[:300])
+                raise HTTPException(resp.status_code, f"OpenAI TTS erreur {resp.status_code}")
 
             audio_base64 = base64.b64encode(resp.content).decode("utf-8")
             return {"audio": f"data:audio/mpeg;base64,{audio_base64}", "success": True}
 
     except httpx.TimeoutException:
-        raise HTTPException(504, "ElevenLabs timeout")
+        raise HTTPException(504, "OpenAI TTS timeout")
     except HTTPException:
         raise
     except Exception as e:
