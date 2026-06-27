@@ -197,7 +197,7 @@ async def text_to_speech(req: ChatRequest):
         "model": "canopylabs/orpheus-v1-english",
         "input": text,
         "voice": GROQ_TTS_VOICE,
-        "response_format": "mp3",
+        "response_format": "wav",
     }
 
     attempts = len(_GROQ_KEYS)
@@ -221,7 +221,7 @@ async def text_to_speech(req: ChatRequest):
                     raise HTTPException(resp.status_code, f"Groq TTS erreur {resp.status_code}")
 
                 audio_base64 = base64.b64encode(resp.content).decode("utf-8")
-                return {"audio": f"data:audio/mpeg;base64,{audio_base64}", "success": True}
+                return {"audio": f"data:audio/wav;base64,{audio_base64}", "success": True}
 
         except httpx.TimeoutException:
             rotate_groq_key()
