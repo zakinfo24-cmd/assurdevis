@@ -178,61 +178,57 @@ class ChatRequest(BaseModel):
     conversation_id: str = ""
 
 
-# ── Groq TTS ───────────────────────────────────────────────────────────────
-# Utilise les mêmes clés Groq déjà configurées — pas de nouvelle clé nécessaire
-# Voix disponibles : alloy, echo, fable, onyx, nova, shimmer
-GROQ_TTS_VOICE = os.getenv("GROQ_TTS_VOICE", "nova")  # nova = voix féminine naturelle
+# ── ElevenLabs TTS ─────────────────────────────────────────────────────────
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "zAvB1CA77BKeZMAepR7x")  # Lucie
 
 @app.post("/tts")
 async def text_to_speech(req: ChatRequest):
-    """Convertir le texte en audio via Groq TTS (PlayHT) — même clé que le chat."""
-    if not _GROQ_KEYS:
-        raise HTTPException(503, "TTS non configuré (GROQ_API_KEY manquante)")
+    """Convertir le texte en audio via ElevenLabs — voix française naturelle."""
+    if not ELEVENLABS_API_KEY:
+        raise HTTPException(503, "TTS non configuré (ELEVENLABS_API_KEY manquante)")
 
     text = req.message.strip()[:1000]
     if not text:
         raise HTTPException(400, "Texte vide")
 
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
     payload = {
-        "model": "canopylabs/orpheus-v1-english",
-        "input": text,
-        "voice": GROQ_TTS_VOICE,
-        "response_format": "wav",
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.75,
+            "style": 0.3,
+            "use_speaker_boost": True,
+        },
     }
 
-    attempts = len(_GROQ_KEYS)
-    for _ in range(attempts):
-        key = get_groq_key()
-        try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(
-                    "https://api.groq.com/openai/v1/audio/speech",
-                    headers={
-                        "Authorization": f"Bearer {key}",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                )
-                if resp.status_code == 429:
-                    rotate_groq_key()
-                    continue
-                if resp.status_code != 200:
-                    logging.getLogger(__name__).error("Groq TTS %d: %s", resp.status_code, resp.text[:200])
-                    raise HTTPException(resp.status_code, f"Groq TTS erreur {resp.status_code}")
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                url,
+                headers={
+                    "xi-api-key": ELEVENLABS_API_KEY,
+                    "Content-Type": "application/json",
+                    "Accept": "audio/mpeg",
+                },
+                json=payload,
+            )
+            if resp.status_code != 200:
+                logging.getLogger(__name__).error("ElevenLabs %d: %s", resp.status_code, resp.text[:300])
+                raise HTTPException(resp.status_code, f"ElevenLabs erreur {resp.status_code}")
 
-                audio_base64 = base64.b64encode(resp.content).decode("utf-8")
-                return {"audio": f"data:audio/wav;base64,{audio_base64}", "success": True}
+            audio_base64 = base64.b64encode(resp.content).decode("utf-8")
+            return {"audio": f"data:audio/mpeg;base64,{audio_base64}", "success": True}
 
-        except httpx.TimeoutException:
-            rotate_groq_key()
-            continue
-        except HTTPException:
-            raise
-        except Exception as e:
-            logging.getLogger(__name__).error("TTS error: %s", e)
-            raise HTTPException(500, str(e))
-
-    raise HTTPException(503, "Groq TTS — toutes les clés ont échoué")
+    except httpx.TimeoutException:
+        raise HTTPException(504, "ElevenLabs timeout")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.getLogger(__name__).error("TTS error: %s", e)
+        raise HTTPException(500, str(e))
 
 async def check_groq() -> bool:
     """Vérifie que la clé Groq active est valide."""
