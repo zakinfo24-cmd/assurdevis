@@ -528,30 +528,22 @@ async def chat(req: ChatRequest):
 
     # Auto-calcul devis si intent QUOTE_AUTO et champs suffisants
     devis_result = None
-    # Recalculer uniquement si les champs clés changent
-    last_msg = req.message.lower()
-    has_key_info = any(w in last_msg for w in [
-        'da', 'cv', 'valeur', 'collision', 'vol', 'incendie', 'bdg', 'viv',
-        'tous risques', 'omnium', 'usage', 'personnel', 'professionnel',
-        'réduction', 'reduction', '%', 'mois', 'garantie'
-    ]) or any(w in last_msg for w in [
-        'alger', 'oran', 'annaba', 'tizi', 'constantine', 'adrar', 'tindouf',
-        'setif', 'batna', 'blida', 'sidi bel', 'tlemcen', 'bejaia', 'biskra',
-        'boumerdes', 'tipaza', 'medea', 'chlef', 'wilaya'
-    ])
-    # Calculer les champs actuels et comparer avec les précédents
-    current_fields = extract_auto_fields_from_history(conv["history"]) if intent == "QUOTE_AUTO" else {}
-    prev_fields = conv.get("last_devis_fields", {})
-    fields_changed = (
-        current_fields.get('valeur') != prev_fields.get('valeur') or
-        current_fields.get('puissance') != prev_fields.get('puissance') or
-        current_fields.get('usage') != prev_fields.get('usage') or
-        current_fields.get('zone') != prev_fields.get('zone') or
-        current_fields.get('reduction') != prev_fields.get('reduction') or
-        current_fields.get('dc_montant') != prev_fields.get('dc_montant') or
-        set(current_fields.get('garanties', [])) != set(prev_fields.get('garanties', []))
-    )
-    if intent == "QUOTE_AUTO" and has_key_info and fields_changed:
+    # Calculer le devis à chaque message QUOTE_AUTO si valeur+puissance présents
+    # et si les champs ont changé depuis le dernier calcul
+    if intent == "QUOTE_AUTO":
+        current_fields = extract_auto_fields_from_history(conv["history"])
+        prev_fields = conv.get("last_devis_fields", {})
+        fields_changed = (
+            current_fields.get('valeur') != prev_fields.get('valeur') or
+            current_fields.get('puissance') != prev_fields.get('puissance') or
+            current_fields.get('usage') != prev_fields.get('usage') or
+            current_fields.get('zone') != prev_fields.get('zone') or
+            current_fields.get('reduction') != prev_fields.get('reduction') or
+            current_fields.get('dc_montant') != prev_fields.get('dc_montant') or
+            set(current_fields.get('garanties', [])) != set(prev_fields.get('garanties', []))
+        )
+        logging.getLogger(__name__).info("QUOTE_AUTO fields=%s changed=%s", current_fields, fields_changed)
+    if intent == "QUOTE_AUTO" and fields_changed and current_fields.get('valeur') and current_fields.get('puissance'):
         fields = extract_auto_fields_from_history(conv["history"])
         logging.getLogger(__name__).info("QUOTE_AUTO fields: %s", fields)
         if fields.get('valeur') and fields.get('puissance') and fields.get('usage'):
