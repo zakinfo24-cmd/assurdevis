@@ -40,7 +40,7 @@ if STATIC.exists():
 
 # ── Groq API (remplace Ollama) ──────────────────────────────────────────────
 GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 # Rotation automatique des clés Groq
 _GROQ_KEYS = [
@@ -71,6 +71,22 @@ SYSTEM_PROMPT = ""
 if INSTRUCTIONS_PATH.exists():
     with open(INSTRUCTIONS_PATH, encoding="utf-8") as f:
         SYSTEM_PROMPT = f.read()
+
+# Instruction critique pour le calcul du devis
+SYSTEM_PROMPT += """
+
+## INSTRUCTION CRITIQUE — CALCUL DU DEVIS
+Quand tu as collecté TOUS ces éléments pour un devis auto :
+- Valeur vénale du véhicule (en DA)
+- Puissance fiscale (CV)
+- Usage (personnel ou professionnel)
+- Wilaya
+- Garanties souhaitées
+
+Ajoute EXACTEMENT ##CALCUL_DEVIS## à la FIN de ton message (après ta réponse normale).
+N'ajoute ce signal QU'UNE SEULE FOIS, quand tu as vraiment tout collecté.
+N'ajoute JAMAIS ce signal si des infos manquent encore.
+"""
 
 conversations: dict[str, dict] = {}
 _REFERENCE_TEXT: str = ""
@@ -526,37 +542,34 @@ async def chat(req: ChatRequest):
 
     conv["history"].append({"role": "assistant", "content": answer})
 
-    # Auto-calcul devis si intent QUOTE_AUTO et champs suffisants
+    # ── Détection signal CALCUL_DEVIS depuis la réponse de Groq ──────────────
+    # Groq émet ##CALCUL_DEVIS## quand il a collecté tous les champs nécessaires.
+    # Le backend extrait les champs et calcule une seule fois.
     devis_result = None
-    # Calculer le devis à chaque message QUOTE_AUTO si valeur+puissance présents
-    # et si les champs ont changé depuis le dernier calcul
-    if intent == "QUOTE_AUTO":
-        current_fields = extract_auto_fields_from_history(conv["history"])
-        prev_fields = conv.get("last_devis_fields", {})
-        fields_changed = (
-            current_fields.get('valeur') != prev_fields.get('valeur') or
-            current_fields.get('puissance') != prev_fields.get('puissance') or
-            current_fields.get('usage') != prev_fields.get('usage') or
-            current_fields.get('zone') != prev_fields.get('zone') or
-            current_fields.get('reduction') != prev_fields.get('reduction') or
-            current_fields.get('dc_montant') != prev_fields.get('dc_montant') or
-            set(current_fields.get('garanties', [])) != set(prev_fields.get('garanties', []))
-        )
-        logging.getLogger(__name__).info("QUOTE_AUTO fields=%s changed=%s", current_fields, fields_changed)
-    if intent == "QUOTE_AUTO" and fields_changed and current_fields.get('valeur') and current_fields.get('puissance'):
+    clean_answer = answer
+
+    if "##CALCUL_DEVIS##" in answer and intent == "QUOTE_AUTO":
+        clean_answer = answer.replace("##CALCUL_DEVIS##", "").strip()
         fields = extract_auto_fields_from_history(conv["history"])
-        logging.getLogger(__name__).info("QUOTE_AUTO fields: %s", fields)
-        if fields.get('valeur') and fields.get('puissance') and fields.get('usage'):
+        logging.getLogger(__name__).info("Signal CALCUL_DEVIS reçu — fields: %s", fields)
+        if fields.get('valeur') and fields.get('puissance'):
             try:
                 devis_result = calc_auto(fields)
                 if devis_result:
                     devis_result['fields'] = fields
-                    auto_save_devis(devis_result, conv_id)
+                    try:
+                        saved = auto_save_devis(devis_result, conv_id)
+                        devis_result['_id'] = saved.get('id', '')
+                    except Exception:
+                        pass
                     conv["last_devis_fields"] = fields
             except Exception as e:
                 logging.getLogger(__name__).error("calc_auto error: %s", e)
 
-    response = {"response": answer, "conversation_id": conv_id, "intent": intent}
+    # Mettre à jour l'historique avec la réponse nettoyée
+    conv["history"][-1]["content"] = clean_answer
+
+    response = {"response": clean_answer, "conversation_id": conv_id, "intent": intent}
     if devis_result:
         response["devis"] = devis_result
     return response
