@@ -339,6 +339,70 @@ async def init_conversation():
     return {"conversation_id": conv_id}
 
 
+
+def extract_auto_fields_from_history(history: list) -> dict:
+    """Extrait les champs du devis auto depuis l'historique de conversation."""
+    fields = {}
+    full_text = " ".join(m["content"] for m in history).lower()
+
+    # Valeur vénale
+    for pattern in [r'(\d[\d\s]*)\s*da', r'valeur[^:]*[:=\s]+(\d[\d\s]+)', r'(\d{6,})\s']:
+        m = re.search(pattern, full_text)
+        if m:
+            v = int(re.sub(r'\s', '', m.group(1)))
+            if v >= 100000:
+                fields['valeur'] = v
+                break
+
+    # Puissance CV
+    m = re.search(r'(\d{1,2})\s*cv', full_text)
+    if m:
+        fields['puissance'] = int(m.group(1))
+
+    # Usage
+    if 'professionnel' in full_text:
+        fields['usage'] = 'professionnel'
+    elif 'personnel' in full_text or 'perso' in full_text:
+        fields['usage'] = 'personnel'
+
+    # Zone / Wilaya
+    WILAYAS_Z2 = ['alger', 'oran', 'constantine', 'annaba', 'sétif', 'batna',
+                  'blida', 'sidi bel', 'tlemcen', 'béjaïa', 'tizi ouzou', 'biskra']
+    zone = 1
+    for w in WILAYAS_Z2:
+        if w in full_text:
+            zone = 2
+            break
+    fields['zone'] = zone
+
+    # Réduction
+    m = re.search(r'r[ée]duction[^:]*[:=\s]+(\d+)\s*%|(\d+)\s*%[^%]*r[ée]duction', full_text)
+    if m:
+        fields['reduction'] = float(m.group(1) or m.group(2))
+    elif 'convention' in full_text or '50%' in full_text or '50 %' in full_text:
+        m2 = re.search(r'(\d+)\s*%', full_text)
+        if m2:
+            fields['reduction'] = float(m2.group(1))
+
+    # Garanties
+    garanties = ['RC']
+    if any(w in full_text for w in ['tous risques', 'omnium', 'topr']):
+        garanties = ['RC', 'TOPR', 'VIV', 'BDG']
+    elif any(w in full_text for w in ['demi tous risques', 'demi-tous', 'semi']):
+        garanties = ['RC', 'VIV', 'BDG']
+    elif any(w in full_text for w in ['vol', 'incendie', 'viv']):
+        garanties.append('VIV')
+    fields['garanties'] = garanties
+
+    # Durée
+    m = re.search(r'(\d+)\s*mois', full_text)
+    if m and int(m.group(1)) in [1, 3, 6, 9, 12]:
+        fields['duree_mois'] = int(m.group(1))
+    else:
+        fields['duree_mois'] = 12
+
+    return fields
+
 @app.post("/chat")
 async def chat(req: ChatRequest):
     if not req.conversation_id:
@@ -421,7 +485,24 @@ async def chat(req: ChatRequest):
         answer = "Le moteur IA est temporairement indisponible. Tapez « devis auto » pour une estimation rapide."
 
     conv["history"].append({"role": "assistant", "content": answer})
-    return {"response": answer, "conversation_id": conv_id, "intent": intent}
+
+    # Auto-calcul devis si intent QUOTE_AUTO et champs suffisants
+    devis_result = None
+    if intent == "QUOTE_AUTO":
+        fields = extract_auto_fields_from_history(conv["history"])
+        if fields.get('valeur') and fields.get('puissance'):
+            try:
+                devis_result = calc_auto(fields)
+                if devis_result:
+                    devis_result['fields'] = fields
+                    auto_save_devis(devis_result, conv_id)
+            except Exception as e:
+                logging.getLogger(__name__).error("calc_auto error: %s", e)
+
+    response = {"response": answer, "conversation_id": conv_id, "intent": intent}
+    if devis_result:
+        response["devis"] = devis_result
+    return response
 
 
 @app.post("/devis/auto")

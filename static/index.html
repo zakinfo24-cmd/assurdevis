@@ -1017,10 +1017,10 @@ async function sendMessage() {
 
     addMessage(fullText, 'bot');
 
-    if (data.intent === 'QUOTE_AUTO' && data.step === 'collecte') {
+    if (data.devis) {
+      addDevisCard(data.devis);
+    } else if (data.intent === 'QUOTE_AUTO' && data.step === 'collecte') {
       startAutoCollecte();
-    } else if (data.intent === 'QUOTE_RD' && data.step === 'collecte') {
-      // RD collecte flow
     }
 
     const tiles = extractTilesFromText(fullText);
