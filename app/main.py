@@ -40,7 +40,7 @@ if STATIC.exists():
 
 # ── Groq API (remplace Ollama) ──────────────────────────────────────────────
 GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
 # Rotation automatique des clés Groq
 _GROQ_KEYS = [
@@ -194,7 +194,7 @@ async def text_to_speech(req: ChatRequest):
         raise HTTPException(400, "Texte vide")
 
     payload = {
-        "model": "playai-tts",
+        "model": "canopylabs/orpheus-v1-english",
         "input": text,
         "voice": GROQ_TTS_VOICE,
         "response_format": "mp3",
