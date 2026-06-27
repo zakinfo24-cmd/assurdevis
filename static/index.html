@@ -671,10 +671,31 @@ function detectLang(text) {
 function getBestVoice(lang) {
   const voices = window.speechSynthesis.getVoices();
   if (lang === 'ar') {
-    return voices.find(v => v.lang.startsWith('ar')) || null;
+    // Priorité voix arabe : SA, MA, DZ, EG
+    return voices.find(v => v.lang === 'ar-SA')
+        || voices.find(v => v.lang === 'ar-MA')
+        || voices.find(v => v.lang === 'ar-DZ')
+        || voices.find(v => v.lang === 'ar-EG')
+        || voices.find(v => v.lang.startsWith('ar'))
+        || null;
   }
-  // Priorité : voix française, puis fr-FR, puis fr-BE, puis n'importe quelle fr
+  // Voix françaises classées par qualité (Microsoft Neural en tête)
+  const FR_PRIORITY = [
+    'Microsoft Denise Online (Natural) - French (France)',
+    'Microsoft Julie Online (Natural) - French (France)',
+    'Microsoft Henri Online (Natural) - French (France)',
+    'Google français',
+    'Amélie',       // macOS
+    'Thomas',       // macOS
+  ];
+  for (const name of FR_PRIORITY) {
+    const v = voices.find(v => v.name === name);
+    if (v) return v;
+  }
+  // Fallback : n'importe quelle voix fr-FR, fr-BE, fr-CH, puis fr-*
   return voices.find(v => v.lang === 'fr-FR')
+      || voices.find(v => v.lang === 'fr-BE')
+      || voices.find(v => v.lang === 'fr-CH')
       || voices.find(v => v.lang.startsWith('fr'))
       || null;
 }
@@ -695,13 +716,16 @@ function speakText(text, btn) {
 
   const utter = new SpeechSynthesisUtterance(clean);
   utter.lang  = lang === 'ar' ? 'ar-SA' : 'fr-FR';
-  utter.rate  = 0.95;
-  utter.pitch = 1.05;
+  utter.rate  = 0.9;
+  utter.pitch = 1.0;
+  utter.volume = 1.0;
 
-  // Attendre que les voix soient chargées puis assigner
   const assignVoice = () => {
     const voice = getBestVoice(lang);
-    if (voice) utter.voice = voice;
+    if (voice) {
+      utter.voice = voice;
+      console.log('TTS voice:', voice.name, voice.lang);
+    }
   };
 
   if (window.speechSynthesis.getVoices().length > 0) {
@@ -711,7 +735,10 @@ function speakText(text, btn) {
   }
 
   utter.onend   = () => { if (btn) btn.classList.remove('speaking'); };
-  utter.onerror = () => { if (btn) btn.classList.remove('speaking'); };
+  utter.onerror = (e) => { 
+    console.error('TTS error:', e);
+    if (btn) btn.classList.remove('speaking'); 
+  };
 
   currentUtterance = utter;
   window.speechSynthesis.speak(utter);
@@ -1053,7 +1080,7 @@ function resetConv() {
   isCollecting = false;
   document.getElementById('chat').innerHTML       = '';
   document.getElementById('tilesBar').innerHTML   = '';
-  addMessage('Bonjour, je suis <strong>Sana</strong>, votre conseillère en assurance AssurDevis. Comment puis-je vous aider ?', 'bot', true);
+  addMessage('Bienvenue sur <strong>AssurDevis</strong> ! En quoi puis-je vous aider ?', 'bot', true);
 }
 
 // ══════════════════════════════════════════════
@@ -1265,7 +1292,7 @@ document.getElementById('input').addEventListener('keyup', function(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); }
 });
 
-addMessage('Bonjour, je suis <strong>Sana</strong>, votre conseillère en assurance AssurDevis. Comment puis-je vous aider ?', 'bot', true);
+addMessage('Bienvenue sur <strong>AssurDevis</strong> ! En quoi puis-je vous aider ?', 'bot', true);
 </script>
 </body>
 </html>
